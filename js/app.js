@@ -747,30 +747,15 @@ function syncUploadToRepo(token, message) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
-  try {
-    closeAllModals();
-  } catch(e) {
-    alert('[1] closeAllModals: ' + e.message);
-    return;
-  }
-  var cfg;
-  try {
-    cfg = getSyncConfig();
-  } catch(e) {
-    alert('[2] getSyncConfig: ' + e.message);
-    return;
-  }
+  closeAllModals();
+  var cfg = getSyncConfig();
   
   if(!cfg || !cfg.token) {
     openSyncSettings();
     return;
   }
   
-  try {
-    showSyncToast('🔄 同步中...', false);
-  } catch(e) {
-    alert('[4] showSyncToast: ' + e.message);
-  }
+  showSyncToast('🔄 双向同步中...', false);
   
   syncUploadToRepo(cfg.token, 'sync phrasebook data')
     .then(function(result) {
@@ -779,7 +764,7 @@ function syncAll() {
       save();
       vocabSave();
       saveSyncConfig({ token: cfg.token, fileSha: result.newSha });
-      showSyncToast('✅ 同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+      showSyncToast('✅ 双向同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
       nav(page);
     })
     .catch(function(e) {
