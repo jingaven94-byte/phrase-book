@@ -509,22 +509,17 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  // FORCE ALL styles inline - bypass ALL CSS
-  var m = document.getElementById('vocab-modal');
-  m.setAttribute('style',
-    'display: block !important; ' +
-    'position: fixed !important; ' +
-    'top: 0 !important; left: 0 !important; ' +
-    'width: 100% !important; height: 100% !important; ' +
-    'z-index: 9999 !important; ' +
-    'background: #00ff00 !important; ' +
-    'border: 10px solid yellow !important; ' +
-    'visibility: visible !important; ' +
-    'opacity: 1 !important;'
-  );
-  m.classList.add('open');
+  // COMPLETELY NEW ELEMENT - ignore existing HTML entirely
+  var old = document.getElementById('test-overlay');
+  if (old) old.remove();
+  
+  var div = document.createElement('div');
+  div.id = 'test-overlay';
+  div.textContent = '!!! 看到我了吗 !!!';
+  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:#00ff00;color:black;font-size:48px;font-weight:bold;display:flex;align-items:center;justify-content:center;border:15px solid yellow;';
+  document.body.appendChild(div);
+  
   document.body.style.background = '#ff0000';
-  document.getElementById('p-vocab').innerHTML = '<div style="color:white;text-align:center;padding:100px 20px;font-size:24px;background:#ff0000">✅ 已强制设置所有样式<br><span style="font-size:14px">能看到绿色弹窗吗？</span></div>';
 }
 
 function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
