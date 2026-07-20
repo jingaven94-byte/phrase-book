@@ -111,6 +111,94 @@ function deleteEntry(id, e) {
 }
 
 // ─── Search ───
+
+// ─── Voice Input ───
+var _recognition = null;
+var _recording = false;
+
+function startVoiceInput(){
+  // Check browser support
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    showMicStatus('语音识别不支持，请使用Chrome浏览器', 'error');
+    return;
+  }
+  
+  if(_recording){
+    stopVoiceInput();
+    return;
+  }
+  
+  try {
+    _recognition = new SpeechRecognition();
+    _recognition.lang = 'en-US';
+    _recognition.continuous = false;
+    _recognition.interimResults = true;
+    _recognition.maxAlternatives = 1;
+    
+    _recording = true;
+    var micBtn = document.getElementById('mic-btn');
+    var statusEl = document.getElementById('mic-status');
+    
+    micBtn.classList.add('recording');
+    micBtn.textContent = '⏹';
+    showMicStatus('正在听...请说出英文词组', 'listening');
+    
+    _recognition.onresult = function(e){
+      var transcript = '';
+      for(var i=e.resultIndex; i<e.results.length; i++){
+        transcript += e.results[i][0].transcript;
+        if(e.results[i].isFinal){
+          var finalText = e.results[i][0].transcript.trim();
+          var input = document.getElementById('f-phrase');
+          input.value = finalText;
+          showMicStatus('✅ 识别完成: "' + finalText + '"', 'done');
+        }
+      }
+    };
+    
+    _recognition.onerror = function(e){
+      showMicStatus('识别出错: ' + e.error, 'error');
+      stopVoiceInput();
+    };
+    
+    _recognition.onend = function(){
+      if(_recording) stopVoiceInput();
+    };
+    
+    _recognition.start();
+  } catch(e){
+    showMicStatus('启动失败: ' + e.message, 'error');
+    stopVoiceInput();
+  }
+}
+
+function stopVoiceInput(){
+  _recording = false;
+  var micBtn = document.getElementById('mic-btn');
+  if(micBtn){
+    micBtn.classList.remove('recording');
+    micBtn.textContent = '🎤';
+  }
+  if(_recognition){
+    try { _recognition.stop(); } catch(e) {}
+    _recognition = null;
+  }
+  var statusEl = document.getElementById('mic-status');
+  if(statusEl && statusEl.textContent.indexOf('✅') < 0){
+    showMicStatus('已取消', '');
+  }
+}
+
+function showMicStatus(msg, type){
+  var el = document.getElementById('mic-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'mic-status';
+  if(type) el.classList.add(type);
+}
+
+
 function toggleSearch() {
   const m = $('modal-search');
   const open = m.classList.contains('open');

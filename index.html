@@ -41,7 +41,11 @@
         <input type="hidden" id="edit-id" />
         <div class="field">
           <label>英文词组</label>
-          <input type="text" id="f-phrase" placeholder="e.g. break the ice" required />
+          <div class="input-row">
+            <input type="text" id="f-phrase" placeholder="e.g. break the ice" required />
+            <button type="button" class="mic-btn" id="mic-btn" onclick="startVoiceInput()" title="语音输入">🎤</button>
+          </div>
+          <div class="mic-status" id="mic-status" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
         </div>
         <div class="field">
           <label>中文释义</label>
