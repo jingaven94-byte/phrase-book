@@ -730,15 +730,30 @@ function syncUploadToRepo(token, message) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
-  closeAllModals();
-  var cfg = getSyncConfig();
+  try {
+    closeAllModals();
+  } catch(e) {
+    alert('[1] closeAllModals: ' + e.message);
+    return;
+  }
+  var cfg;
+  try {
+    cfg = getSyncConfig();
+  } catch(e) {
+    alert('[2] getSyncConfig: ' + e.message);
+    return;
+  }
   
   if(!cfg || !cfg.token) {
     openSyncSettings();
     return;
   }
   
-  showSyncToast('🔄 同步中...', false);
+  try {
+    showSyncToast('🔄 同步中...', false);
+  } catch(e) {
+    alert('[4] showSyncToast: ' + e.message);
+  }
   
   syncUploadToRepo(cfg.token, 'sync phrasebook data')
     .then(function(result) {
