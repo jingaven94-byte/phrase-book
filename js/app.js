@@ -509,25 +509,8 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  closeAllModals();
-  var m = document.getElementById('vocab-modal');
-  if (!m) return;
-  var t = document.getElementById('vocab-modal-title');
-  if (t) t.textContent = editId ? '编辑生词' : '添加生词';
-  var ei = document.getElementById('vocab-edit-id');
-  if (ei) ei.value = editId || '';
-  if (editId) {
-    var v = vocabData.find(function(x) { return x.id === editId; });
-    if (!v) return;
-    var w = document.getElementById('vf-word'); if (w) w.value = v.word;
-    var mn = document.getElementById('vf-meaning'); if (mn) mn.value = v.meaning;
-  } else {
-    var w = document.getElementById('vf-word'); if (w) w.value = '';
-    var mn = document.getElementById('vf-meaning'); if (mn) mn.value = '';
-  }
-  // Nuclear option: bypass all CSS
-  m.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
-  m.classList.add('open');
+  // ULTRA SIMPLE: exactly like openModal, just add class
+  document.getElementById('vocab-modal').classList.add('open');
   setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
 }
 
