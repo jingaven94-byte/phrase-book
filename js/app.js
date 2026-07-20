@@ -241,13 +241,34 @@ function doSearch() {
   const q = $('sq').value.trim().toLowerCase();
   const el = $('sr');
   if (!q) { el.innerHTML = ''; return; }
-  const res = data.filter(p =>
-    p.phrase.toLowerCase().includes(q) ||
-    p.meaning.includes(q) ||
-    (p.example && p.example.toLowerCase().includes(q))
-  );
-  if (!res.length) { el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="muted">无匹配</div></div>'; return; }
-  el.innerHTML = res.map(p => entryHTML(p, true)).join('');
+  var res = data.filter(function(p) {
+    return p.phrase.toLowerCase().includes(q) ||
+      p.meaning.includes(q) ||
+      (p.example && p.example.toLowerCase().includes(q));
+  });
+  var vocabRes = vocabData.filter(function(v) {
+    return v.word.toLowerCase().includes(q) ||
+      v.meaning.includes(q);
+  });
+  var h = '';
+  if (res.length) {
+    h += '<div class="fw-6 mb-4" style="font-size:.8125rem;color:var(--muted)">📝 词组</div>';
+    h += res.map(function(p) { return entryHTML(p, true); }).join('');
+  }
+  if (vocabRes.length) {
+    h += '<div class="fw-6 mb-4 mt-8" style="font-size:.8125rem;color:var(--muted)">📖 生词</div>';
+    vocabRes.forEach(function(v) {
+      var stars = '\u2605'.repeat(Math.min(v.mastery||0,5)) + '\u2606'.repeat(Math.max(5-(v.mastery||0),0));
+      h += '<div class="entry"><div class="entry-phrase">' + esc(v.word) + '</div>';
+      h += '<div class="entry-meaning">' + esc(v.meaning) + '</div>';
+      h += '<div class="entry-footer"><span class="entry-date">\ud83d\udcc5 ' + (v.date || '') + '</span><span class="entry-stars">' + stars + '</span></div></div>';
+    });
+  }
+  if (!res.length && !vocabRes.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="muted">无匹配</div></div>';
+    return;
+  }
+  el.innerHTML = h;
 }
 
 // ─── Today ───
@@ -411,9 +432,10 @@ function renderStats() {
   const total = data.length;
   const td = today();
   const todayAdd = data.filter(p => p.date === td).length;
-  const mastered = data.filter(p => p.mastery >= 5).length;
+  const mastered = data.filter(p => p.reviewCount > 0).length;
   const due = getDue().length;
   const reviewed = data.filter(p => p.reviewCount > 0).length;
+  const deepMastery = data.filter(p => p.mastery >= 5).length;
   const weekData = getWeekData();
 
   let h = `<div class="stats-grid">`;
@@ -425,8 +447,10 @@ function renderStats() {
 
   if (total > 0) {
     const pct = Math.round(mastered / total * 100);
-    h += `<div class="card"><div class="fw-6 mb-8">掌握进度</div><div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>`;
-    h += `<div class="flex" style="justify-content:space-between"><span class="muted">${mastered}/${total}</span><span class="muted">${pct}%</span></div></div>`;
+    const deepPct = Math.round(deepMastery / total * 100);
+    h += `<div class="card"><div class="fw-6 mb-8">复习进度</div><div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+    h += `<div class="flex" style="justify-content:space-between"><span class="muted">${mastered}/${total} 已复习</span><span class="muted">${pct}%</span></div>`;
+    h += `<div class="flex" style="justify-content:space-between;margin-top:4px"><span class="muted">${deepMastery}/${total} 已掌握（5星）</span><span class="muted">${deepPct}%</span></div></div>`;
   }
 
   h += `<div class="card"><div class="fw-6 mb-8">分类分布</div>`;
@@ -585,7 +609,9 @@ function getWeekData() {
 
 
 // ─── Sync ───
-const GIST_FILENAME = 'phrasebook-data.json';
+const SYNC_REPO = 'jingaven94-byte/phrase-book';
+const SYNC_BRANCH = 'main';
+const SYNC_PATH = 'data/phrasebook-backup.json';
 
 // Get saved sync config
 function getSyncConfig() {
@@ -628,7 +654,6 @@ function syncAll() {
   
   // Already configured: sync everything
   var token = cfg.token;
-  var gistId = cfg.gistId || '';
   
   showSyncToast('🔄 同步中...', false);
   
@@ -638,23 +663,19 @@ function syncAll() {
     updatedAt: new Date().toISOString()
   });
   
-  var body = {
-    description: '语块本同步数据',
-    files: {}
-  };
-  body.files[GIST_FILENAME] = { content: content };
+  var sha = cfg.fileSha || '';
   
-  var url, method;
-  if(gistId) {
-    url = 'https://api.github.com/gists/' + gistId;
-    method = 'PATCH';
-  } else {
-    url = 'https://api.github.com/gists';
-    method = 'POST';
-  }
+  var body = {
+    message: 'sync phrasebook data',
+    content: btoa(unescape(encodeURIComponent(content))),
+    branch: SYNC_BRANCH
+  };
+  if (sha) body.sha = sha;
+  
+  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
   
   fetch(url, {
-    method: method,
+    method: 'PUT',
     headers: {
       'Authorization': 'token ' + token,
       'Accept': 'application/vnd.github.v3+json'
@@ -662,18 +683,16 @@ function syncAll() {
     body: JSON.stringify(body)
   })
   .then(function(r) {
-    if(!r.ok) throw new Error('HTTP ' + r.status);
+    if(!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
     return r.json();
   })
   .then(function(result) {
-    if(!gistId) {
-      gistId = result.id;
-      saveSyncConfig({ token: token, gistId: gistId });
-    }
+    var newSha = result.content ? result.content.sha : '';
+    saveSyncConfig({ token: token, fileSha: newSha });
     showSyncToast('✅ 同步成功！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
   })
   .catch(function(e) {
-    showSyncToast('❌ 同步失败，点击🔄重试', false);
+    showSyncToast('❌ 同步失败: ' + e.message, false);
   });
 }
 
@@ -689,32 +708,26 @@ function setupSync() {
   $('sync-status-msg').textContent = '配置中...';
   $('sync-status-msg').style.color = 'var(--text2)';
   
-  var cfg = getSyncConfig();
-  var gistId = cfg ? cfg.gistId : '';
-  
   var content = JSON.stringify({
     phrases: data,
     vocab: vocabData,
     updatedAt: new Date().toISOString()
   });
   
-  var body = {
-    description: '语块本同步数据',
-    files: {}
-  };
-  body.files[GIST_FILENAME] = { content: content };
+  var cfg = getSyncConfig();
+  var sha = cfg ? (cfg.fileSha || '') : '';
   
-  var url, method;
-  if(gistId) {
-    url = 'https://api.github.com/gists/' + gistId;
-    method = 'PATCH';
-  } else {
-    url = 'https://api.github.com/gists';
-    method = 'POST';
-  }
+  var body = {
+    message: 'init phrasebook sync',
+    content: btoa(unescape(encodeURIComponent(content))),
+    branch: SYNC_BRANCH
+  };
+  if (sha) body.sha = sha;
+  
+  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
   
   fetch(url, {
-    method: method,
+    method: 'PUT',
     headers: {
       'Authorization': 'token ' + token,
       'Accept': 'application/vnd.github.v3+json'
@@ -722,18 +735,18 @@ function setupSync() {
     body: JSON.stringify(body)
   })
   .then(function(r) {
-    if(!r.ok) throw new Error();
+    if(!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
     return r.json();
   })
   .then(function(result) {
-    if(!gistId) gistId = result.id;
-    saveSyncConfig({ token: token, gistId: gistId });
-    $('sync-status-msg').textContent = '✅ 设置完成！现在点击🔄即可一键同步';
+    var newSha = result.content ? result.content.sha : '';
+    saveSyncConfig({ token: token, fileSha: newSha });
+    $('sync-status-msg').textContent = '✅ 设置完成！数据已同步到仓库';
     $('sync-status-msg').style.color = 'var(--success)';
     setTimeout(closeSyncModal, 1500);
   })
   .catch(function(e) {
-    $('sync-status-msg').textContent = '❌ 设置失败，请检查 Token';
+    $('sync-status-msg').textContent = '❌ 设置失败: ' + e.message;
     $('sync-status-msg').style.color = 'var(--danger)';
   });
 }
@@ -759,36 +772,27 @@ function openSyncSettings() {
 // Also sync from cloud: pull latest data
 function syncPull() {
   var cfg = getSyncConfig();
-  if(!cfg || !cfg.token || !cfg.gistId) {
+  if(!cfg || !cfg.token) {
     showSyncToast('请先点击🔄设置同步', false);
     return;
   }
   
   showSyncToast('📥 下载中...', false);
-  fetch('https://api.github.com/gists/' + cfg.gistId, {
-    headers: {
-      'Authorization': 'token ' + cfg.token,
-      'Accept': 'application/vnd.github.v3+json'
-    }
+  fetch('https://raw.githubusercontent.com/' + SYNC_REPO + '/' + SYNC_BRANCH + '/' + SYNC_PATH, {
+    cache: 'no-cache'
   })
   .then(function(r) {
-    if(!r.ok) throw new Error();
+    if(!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   })
-  .then(function(result) {
-    var file = result.files[GIST_FILENAME];
-    if(file && file.content) {
-      var remote = JSON.parse(file.content);
-      if(remote.phrases) { data = remote.phrases; save(); }
-      if(remote.vocab) { vocabData = remote.vocab; vocabSave(); }
-      showSyncToast('✅ 已下载 ' + data.length + ' 词组', true);
-      nav(page);
-    } else {
-      showSyncToast('❌ 云端没有数据', false);
-    }
+  .then(function(remote) {
+    if(remote.phrases) { data = remote.phrases; save(); }
+    if(remote.vocab) { vocabData = remote.vocab; vocabSave(); }
+    showSyncToast('✅ 已下载 ' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+    nav(page);
   })
   .catch(function(e) {
-    showSyncToast('❌ 下载失败', false);
+    showSyncToast('❌ 下载失败: ' + e.message, false);
   });
 }
 
