@@ -509,13 +509,22 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  // Highly visible test
+  // FORCE ALL styles inline - bypass ALL CSS
+  var m = document.getElementById('vocab-modal');
+  m.setAttribute('style',
+    'display: block !important; ' +
+    'position: fixed !important; ' +
+    'top: 0 !important; left: 0 !important; ' +
+    'width: 100% !important; height: 100% !important; ' +
+    'z-index: 9999 !important; ' +
+    'background: #00ff00 !important; ' +
+    'border: 10px solid yellow !important; ' +
+    'visibility: visible !important; ' +
+    'opacity: 1 !important;'
+  );
+  m.classList.add('open');
   document.body.style.background = '#ff0000';
-  document.getElementById('vocab-modal').style.background = '#00ff00';
-  document.getElementById('vocab-modal').style.border = '10px solid yellow';
-  document.getElementById('vocab-modal').classList.add('open');
-  // Also write visible text to page
-  document.getElementById('p-vocab').innerHTML = '<div style="color:white;text-align:center;padding:100px 20px;font-size:24px;background:#ff0000">✅ 点击OK之后看弹窗<br><br><span style="font-size:14px">弹窗应该已经显示了，绿色背景+黄色边框</span></div>';
+  document.getElementById('p-vocab').innerHTML = '<div style="color:white;text-align:center;padding:100px 20px;font-size:24px;background:#ff0000">✅ 已强制设置所有样式<br><span style="font-size:14px">能看到绿色弹窗吗？</span></div>';
 }
 
 function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
