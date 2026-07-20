@@ -509,6 +509,7 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
+  alert('openVocabModal called');
   closeAllModals();
   var m = $('vocab-modal');
   if (!m) { alert('错误: 找不到生词弹窗元素'); return; }
@@ -617,6 +618,7 @@ function showSyncToast(msg, isOk) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
+  alert('syncAll called');
   closeAllModals();
   var cfg = getSyncConfig();
   
