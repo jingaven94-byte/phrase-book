@@ -34,6 +34,12 @@ function nav(p) {
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   const el = $('p-'+p); if (el) el.classList.add('active');
   window.scrollTo(0,0);
+  
+  // Update header title based on current page
+  const titles = {today:'📝 语块本', bank:'📝 语料', review:'🔄 复习', vocab:'📖 生词本', stats:'📊 统计'};
+  const h1 = document.querySelector('.header h1');
+  if (h1 && titles[p]) h1.textContent = titles[p];
+  
   if (p === 'today') renderToday();
   else if (p === 'bank') renderBank();
   else if (p === 'review') renderReview();
