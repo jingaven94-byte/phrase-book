@@ -509,9 +509,19 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  // ULTRA SIMPLE: exactly like openModal, just add class
-  document.getElementById('vocab-modal').classList.add('open');
-  setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
+  var m = document.getElementById('vocab-modal');
+  var msg = 'exists=' + (!!m) + ' className=' + (m ? m.className : 'N/A');
+  msg += ' computedDisplay=' + (m ? getComputedStyle(m).display : 'N/A');
+  msg += ' bgExists=' + (m ? !!m.querySelector('.modal-bg') : 'N/A');
+  if (m) {
+    m.classList.add('open');
+    msg += ' afterAdd_computedDisplay=' + getComputedStyle(m).display;
+    msg += ' afterAdd_className=' + m.className;
+  }
+  alert(msg);
+  if (m) {
+    setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
+  }
 }
 
 function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
