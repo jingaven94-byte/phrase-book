@@ -48,7 +48,11 @@ function nav(p) {
 }
 
 // ─── Modal ───
+function closeAllModals() {
+  document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+}
 function openModal(title, editId) {
+  closeAllModals();
   $('modal-title').textContent = title;
   $('edit-id').value = editId || '';
   if (editId) {
@@ -497,6 +501,7 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
+  closeAllModals();
   $('vocab-modal-title').textContent = editId ? '编辑生词' : '添加生词';
   $('vocab-edit-id').value = editId || '';
   if (editId) {
@@ -599,6 +604,7 @@ function showSyncToast(msg, isOk) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
+  closeAllModals();
   var cfg = getSyncConfig();
   
   // First time: show setup modal
@@ -722,7 +728,7 @@ function setupSync() {
 }
 
 function closeSyncModal() {
-  $('modal-sync').classList.remove('open');
+  closeAllModals();
   $('sync-token').value = '';
   $('sync-status-msg').textContent = '';
 }
