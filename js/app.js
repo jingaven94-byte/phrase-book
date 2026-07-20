@@ -8,7 +8,7 @@ const VOCAB_KEY = 'phrasebook_vocab';
 
 const $ = id => document.getElementById(id);
 const esc = s => { if(!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => { var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const now = () => Date.now();
 const dateCN = ds => { const d = new Date(ds); return (d.getMonth()+1)+'月'+d.getDate()+'日 星期'+['日','一','二','三','四','五','六'][d.getDay()]; };
 const weekDays = ['日','一','二','三','四','五','六'];
@@ -123,9 +123,28 @@ function saveEntry(e) {
   return false;
 }
 
+
+function getDeletedIds() {
+  try {
+    var raw = localStorage.getItem("phrasebook_deleted");
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        if (!parsed.phrases) parsed.phrases = {};
+        if (!parsed.vocab) parsed.vocab = {};
+        return parsed;
+      }
+    }
+  } catch(e) {}
+  return { phrases: {}, vocab: {} };
+}
+
 function deleteEntry(id, e) {
   if (e) e.stopPropagation();
   if (!confirm('删除这个词组？')) return;
+  var delIds = getDeletedIds();
+  delIds.phrases[id] = true;
+  localStorage.setItem('phrasebook_deleted', JSON.stringify(delIds));
   data = data.filter(p => p.id !== id);
   save();
   nav(page);
@@ -619,6 +638,9 @@ function vocabEntryHTML(v) {
 function vocabDeleteEntry(id, e) {
   if (e) e.stopPropagation();
   if (!confirm('删除这个生词？')) return;
+  var delIds = getDeletedIds();
+  delIds.vocab[id] = true;
+  localStorage.setItem('phrasebook_deleted', JSON.stringify(delIds));
   vocabData = vocabData.filter(v => v.id !== id);
   vocabSave();
   renderVocab();
@@ -800,11 +822,23 @@ function syncUploadToRepo(token, message) {
       
       mergedPhrases.sort(function(a, b) { return b.id - a.id; });
       mergedVocab.sort(function(a, b) { return b.id - a.id; });
+      // Filter out deleted items (remote + local)
+      var delIds = (remoteData && remoteData.deletedIds) ? JSON.parse(JSON.stringify(remoteData.deletedIds)) : { phrases: {}, vocab: {} };
+      try { var localDel = JSON.parse(localStorage.getItem("phrasebook_deleted") || "{}");
+        if (localDel) {
+          for (var id in (localDel.phrases || {})) { if (!delIds.phrases) delIds.phrases = {}; delIds.phrases[id] = true; }
+          for (var id in (localDel.vocab || {})) { if (!delIds.vocab) delIds.vocab = {}; delIds.vocab[id] = true; }
+        }
+      } catch(e) {}
+      mergedPhrases = mergedPhrases.filter(function(p) { return !(delIds.phrases && delIds.phrases[p.id]); });
+      mergedVocab = mergedVocab.filter(function(v) { return !(delIds.vocab && delIds.vocab[v.id]); });
+
       
       // Step 3: PUT merged data
       var uploadContent = JSON.stringify({
         phrases: mergedPhrases,
         vocab: mergedVocab,
+        deletedIds: delIds,
         updatedAt: new Date().toISOString()
       });
       
