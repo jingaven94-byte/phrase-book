@@ -434,7 +434,6 @@ function renderStats() {
   const todayAdd = data.filter(p => p.date === td).length;
   const mastered = data.filter(p => p.reviewCount > 0).length;
   const due = getDue().length;
-  const reviewed = data.filter(p => p.reviewCount > 0).length;
   const deepMastery = data.filter(p => p.mastery >= 5).length;
   const weekData = getWeekData();
 
@@ -625,6 +624,62 @@ function saveSyncConfig(cfg) {
   localStorage.setItem('phrasebook_sync', JSON.stringify(cfg));
 }
 
+
+// Helper: upload data to repo, auto-fetch sha if needed
+function syncUploadToRepo(token, message) {
+  return new Promise(function(resolve, reject) {
+    var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
+    
+    // Step 1: check if file exists and get its SHA
+    fetch(url, {
+      cache: 'no-cache',
+      headers: {
+        'Authorization': 'token ' + token,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    })
+    .then(function(r) {
+      if (r.status === 404) return null; // new file
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
+      return r.json();
+    })
+    .then(function(fileInfo) {
+      var content = JSON.stringify({
+        phrases: data,
+        vocab: vocabData,
+        updatedAt: new Date().toISOString()
+      });
+      
+      var body = {
+        message: message || 'sync phrasebook data',
+        content: btoa(unescape(encodeURIComponent(content))),
+        branch: SYNC_BRANCH
+      };
+      if (fileInfo && fileInfo.sha) body.sha = fileInfo.sha;
+      
+      // Step 2: PUT (create or update)
+      return fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'token ' + token,
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify(body)
+      });
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
+      return r.json();
+    })
+    .then(function(result) {
+      var newSha = result.content ? result.content.sha : '';
+      resolve(newSha);
+    })
+    .catch(function(e) {
+      reject(e);
+    });
+  });
+}
 // Show a toast notification at the top
 function showSyncToast(msg, isOk) {
   var el = $('sync-toast');
@@ -652,51 +707,19 @@ function syncAll() {
     return;
   }
   
-  // Already configured: sync everything
-  var token = cfg.token;
-  
   showSyncToast('🔄 同步中...', false);
   
-  var content = JSON.stringify({
-    phrases: data,
-    vocab: vocabData,
-    updatedAt: new Date().toISOString()
-  });
-  
-  var sha = cfg.fileSha || '';
-  
-  var body = {
-    message: 'sync phrasebook data',
-    content: btoa(unescape(encodeURIComponent(content))),
-    branch: SYNC_BRANCH
-  };
-  if (sha) body.sha = sha;
-  
-  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
-  
-  fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'token ' + token,
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(function(r) {
-    if(!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
-    return r.json();
-  })
-  .then(function(result) {
-    var newSha = result.content ? result.content.sha : '';
-    saveSyncConfig({ token: token, fileSha: newSha });
-    showSyncToast('✅ 同步成功！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
-  })
-  .catch(function(e) {
-    showSyncToast('❌ 同步失败: ' + e.message, false);
-  });
+  syncUploadToRepo(cfg.token, 'sync phrasebook data')
+    .then(function(newSha) {
+      saveSyncConfig({ token: cfg.token, fileSha: newSha });
+      showSyncToast('✅ 同步成功！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+    })
+    .catch(function(e) {
+      showSyncToast('❌ 同步失败: ' + e.message, false);
+    });
 }
 
-// Setup modal: save token and create gist
+// Setup modal: save token and sync
 function setupSync() {
   var token = $('sync-token').value.trim();
   if(!token) {
@@ -708,47 +731,17 @@ function setupSync() {
   $('sync-status-msg').textContent = '配置中...';
   $('sync-status-msg').style.color = 'var(--text2)';
   
-  var content = JSON.stringify({
-    phrases: data,
-    vocab: vocabData,
-    updatedAt: new Date().toISOString()
-  });
-  
-  var cfg = getSyncConfig();
-  var sha = cfg ? (cfg.fileSha || '') : '';
-  
-  var body = {
-    message: 'init phrasebook sync',
-    content: btoa(unescape(encodeURIComponent(content))),
-    branch: SYNC_BRANCH
-  };
-  if (sha) body.sha = sha;
-  
-  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
-  
-  fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'token ' + token,
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(function(r) {
-    if(!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
-    return r.json();
-  })
-  .then(function(result) {
-    var newSha = result.content ? result.content.sha : '';
-    saveSyncConfig({ token: token, fileSha: newSha });
-    $('sync-status-msg').textContent = '✅ 设置完成！数据已同步到仓库';
-    $('sync-status-msg').style.color = 'var(--success)';
-    setTimeout(closeSyncModal, 1500);
-  })
-  .catch(function(e) {
-    $('sync-status-msg').textContent = '❌ 设置失败: ' + e.message;
-    $('sync-status-msg').style.color = 'var(--danger)';
-  });
+  syncUploadToRepo(token, 'init phrasebook sync')
+    .then(function(newSha) {
+      saveSyncConfig({ token: token, fileSha: newSha });
+      $('sync-status-msg').textContent = '✅ 设置完成！数据已同步到仓库';
+      $('sync-status-msg').style.color = 'var(--success)';
+      setTimeout(closeSyncModal, 1500);
+    })
+    .catch(function(e) {
+      $('sync-status-msg').textContent = '❌ 设置失败: ' + e.message;
+      $('sync-status-msg').style.color = 'var(--danger)';
+    });
 }
 
 function closeSyncModal() {
