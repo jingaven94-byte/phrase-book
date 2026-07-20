@@ -118,83 +118,90 @@ function deleteEntry(id, e) {
 // ─── Voice Input ───
 var _recognition = null;
 var _recording = false;
+var _currentTarget = null;
 
-function startVoiceInput(){
-  // Check browser support
+function startVoiceInput(btn){
+  var targetId = btn.dataset.target;
+  var lang = btn.dataset.lang || 'en-US';
+  var hint = btn.dataset.hint || '语音输入';
+  
   var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SpeechRecognition){
-    showMicStatus('语音识别不支持，请使用Chrome浏览器', 'error');
+    showMicStatus(targetId, '语音识别不支持，请使用Chrome浏览器', 'error');
     return;
   }
   
   if(_recording){
-    stopVoiceInput();
+    if(_currentTarget === targetId) {
+      stopVoiceInput(targetId);
+    }
     return;
   }
   
   try {
     _recognition = new SpeechRecognition();
-    _recognition.lang = 'en-US';
+    _recognition.lang = lang;
     _recognition.continuous = false;
     _recognition.interimResults = true;
     _recognition.maxAlternatives = 1;
     
     _recording = true;
-    var micBtn = document.getElementById('mic-btn');
-    var statusEl = document.getElementById('mic-status');
+    _currentTarget = targetId;
     
-    micBtn.classList.add('recording');
-    micBtn.textContent = '⏹';
-    showMicStatus('正在听...请说出英文词组', 'listening');
+    btn.classList.add('recording');
+    btn.textContent = '⏹';
+    showMicStatus(targetId, '正在听...' + hint, 'listening');
     
     _recognition.onresult = function(e){
-      var transcript = '';
       for(var i=e.resultIndex; i<e.results.length; i++){
-        transcript += e.results[i][0].transcript;
         if(e.results[i].isFinal){
           var finalText = e.results[i][0].transcript.trim();
-          var input = document.getElementById('f-phrase');
-          input.value = finalText;
-          showMicStatus('✅ 识别完成: "' + finalText + '"', 'done');
+          var input = document.getElementById(targetId);
+          if(input) input.value = finalText;
+          showMicStatus(targetId, '✅ 识别完成', 'done');
         }
       }
     };
     
     _recognition.onerror = function(e){
-      showMicStatus('识别出错: ' + e.error, 'error');
-      stopVoiceInput();
+      showMicStatus(targetId, '识别出错: ' + e.error, 'error');
+      stopVoiceInput(targetId);
     };
     
     _recognition.onend = function(){
-      if(_recording) stopVoiceInput();
+      if(_recording) stopVoiceInput(_currentTarget);
     };
     
     _recognition.start();
   } catch(e){
-    showMicStatus('启动失败: ' + e.message, 'error');
-    stopVoiceInput();
+    showMicStatus(targetId, '启动失败: ' + e.message, 'error');
+    stopVoiceInput(targetId);
   }
 }
 
-function stopVoiceInput(){
+function stopVoiceInput(targetId){
   _recording = false;
-  var micBtn = document.getElementById('mic-btn');
-  if(micBtn){
-    micBtn.classList.remove('recording');
-    micBtn.textContent = '🎤';
-  }
+  _currentTarget = null;
+  
+  var btns = document.querySelectorAll('[data-target="' + targetId + '"]');
+  btns.forEach(function(btn){
+    btn.classList.remove('recording');
+    btn.textContent = '🎤';
+  });
+  
   if(_recognition){
     try { _recognition.stop(); } catch(e) {}
     _recognition = null;
   }
-  var statusEl = document.getElementById('mic-status');
-  if(statusEl && statusEl.textContent.indexOf('✅') < 0){
-    showMicStatus('已取消', '');
+  
+  var el = document.getElementById('ms-' + targetId);
+  if(el && el.textContent.indexOf('✅') < 0){
+    showMicStatus(targetId, '已取消', '');
   }
 }
 
-function showMicStatus(msg, type){
-  var el = document.getElementById('mic-status');
+function showMicStatus(targetId, msg, type){
+  var el = document.getElementById('ms-' + targetId);
   if(!el) return;
   el.textContent = msg;
   el.className = 'mic-status';

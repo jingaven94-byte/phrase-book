@@ -28,7 +28,7 @@
 
   <nav class="nav">
     <button class="nav-item active" data-page="today"><span class="ni">📋</span>今日</button>
-    <button class="nav-item" data-page="bank"><span class="ni">📚</span>词库</button>
+    <button class="nav-item" data-page="bank"><span class="ni">📚</span>语料</button>
     <button class="nav-item" data-page="review"><span class="ni">🔄</span>复习</button>
     <button class="nav-item" data-page="vocab"><span class="ni">📖</span>生词</button>
     <button class="nav-item" data-page="stats"><span class="ni">📊</span>统计</button>
@@ -44,22 +44,29 @@
         <div class="field">
           <label>英文词组</label>
           <div class="input-row">
-            <input type="text" id="f-phrase" placeholder="e.g. break the ice" required />
-            <button type="button" class="mic-btn" id="mic-btn" onclick="startVoiceInput()" title="语音输入">🎤</button>
-          </div>
-          <div class="mic-status" id="mic-status" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
-        </div>
+              <input type="text" id="f-phrase" placeholder="e.g. break the ice" required />
+              <button type="button" class="mic-btn" data-target="f-phrase" data-lang="en-US" data-hint="请说出英文词组" onclick="startVoiceInput(this)">🎤</button>
+            </div>
+          <div class="mic-status" id="ms-f-phrase" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
         <div class="field">
           <label>中文释义</label>
           <input type="text" id="f-meaning" placeholder="打破僵局" required />
         </div>
         <div class="field">
           <label>例句（可选）</label>
-          <textarea id="f-example" rows="2" placeholder="I told a joke to break the ice at the meeting."></textarea>
+            <div class="input-row">
+              <textarea id="f-example" rows="2" placeholder="I told a joke to break the ice at the meeting."></textarea>
+              <button type="button" class="mic-btn" data-target="f-example" data-lang="en-US" data-hint="请说出英文例句" onclick="startVoiceInput(this)">🎤</button>
+            </div>
+            <div class="mic-status" id="ms-f-example" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
         </div>
         <div class="field">
           <label>例句翻译（可选）</label>
-          <textarea id="f-example-cn" rows="2" placeholder="我讲了个笑话来打破会议上的僵局。"></textarea>
+            <div class="input-row">
+              <textarea id="f-example-cn" rows="2" placeholder="我讲了个笑话来打破会议上的僵局。"></textarea>
+              <button type="button" class="mic-btn" data-target="f-example-cn" data-lang="zh-CN" data-hint="请说出例句翻译" onclick="startVoiceInput(this)">🎤</button>
+            </div>
+            <div class="mic-status" id="ms-f-example-cn" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
         </div>
         <div class="field-row">
           <div class="field" style="flex:1">
@@ -97,7 +104,11 @@
         </div>
         <div class="field">
           <label>中文释义</label>
-          <input type="text" id="vf-meaning" placeholder="必要的，基本的" required />
+            <div class="input-row">
+              <input type="text" id="f-meaning" placeholder="打破僵局" required />
+              <button type="button" class="mic-btn" data-target="f-meaning" data-lang="zh-CN" data-hint="请说出中文释义" onclick="startVoiceInput(this)">🎤</button>
+            </div>
+            <div class="mic-status" id="ms-f-meaning" style="font-size:.75rem;color:var(--muted);margin-top:4px;min-height:18px"></div>
         </div>
         <button type="submit" class="btn btn-primary btn-block">保存</button>
       </form>
