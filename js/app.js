@@ -509,10 +509,13 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  alert('openVocabModal called');
+  alert('1-start');
   closeAllModals();
+  alert('2-afterCloseAll');
   var m = $('vocab-modal');
+  alert('3-gotModal=' + (m ? m.id : 'NULL'));
   if (!m) { alert('错误: 找不到生词弹窗元素'); return; }
+  alert('4-nullCheckPassed');
   var t = $('vocab-modal-title');
   if (t) t.textContent = editId ? '编辑生词' : '添加生词';
   var ei = $('vocab-edit-id');
@@ -526,8 +529,11 @@ function openVocabModal(editId) {
     var w = $('vf-word'); if (w) w.value = '';
     var mn = $('vf-meaning'); if (mn) mn.value = '';
   }
+  alert('5-beforeDisplay');
   m.style.display = 'block';
+  alert('6-afterDisplay');
   m.classList.add('open');
+  alert('7-afterClass');
   setTimeout(function() { var f = $('vf-word'); if (f) f.focus(); }, 300);
 }
 
@@ -618,16 +624,21 @@ function showSyncToast(msg, isOk) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
-  alert('syncAll called');
+  alert('1-sync-start');
   closeAllModals();
   var cfg = getSyncConfig();
   
   // First time: show setup modal
   if(!cfg || !cfg.token) {
+    alert('2-sync-firstTime');
     var ms = document.getElementById('modal-sync');
-    if (!ms) { return; }
+    alert('3-sync-ms=' + (ms ? ms.id : 'NULL'));
+    if (!ms) { alert('4-sync-null'); return; }
+    alert('5-sync-beforeShow');
     ms.style.display = 'block';
+    alert('6-sync-afterDisplay');
     ms.classList.add('open');
+    alert('7-sync-afterClass');
     // Focus the token input
     setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
     return;
