@@ -709,16 +709,26 @@ function syncAll() {
   showSyncToast('🔄 双向同步中...', false);
   
   var token = cfg.token;
-  var url = 'https://raw.githubusercontent.com/' + SYNC_REPO + '/' + SYNC_BRANCH + '/' + SYNC_PATH;
+  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
   
-  // Step 1: download remote data
-  fetch(url, { cache: 'no-cache' })
+  // Step 1: download remote data via API (no CDN cache)
+  fetch(url, { cache: 'no-cache', headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } })
     .then(function(r) {
-      if (r.status === 404) return null; // no remote data yet
-      if (!r.ok) throw new Error('下载失败: HTTP ' + r.status);
+      if (r.status === 404) return null;
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
       return r.json();
     })
-    .then(function(remote) {
+    .then(function(fileInfo) {
+      var remote = null;
+      if (fileInfo && fileInfo.content) {
+        try {
+          var raw = atob(fileInfo.content);
+          var jsonStr = decodeURIComponent(escape(raw));
+          remote = JSON.parse(jsonStr);
+        } catch(e) {
+          remote = null;
+        }
+      }
       // Step 2: merge remote + local
       var mergedPhrases = [];
       var seenPhraseIds = {};
@@ -799,16 +809,26 @@ function setupSync() {
   $('sync-status-msg').textContent = '双向同步中...';
   $('sync-status-msg').style.color = 'var(--text2)';
   
-  var url = 'https://raw.githubusercontent.com/' + SYNC_REPO + '/' + SYNC_BRANCH + '/' + SYNC_PATH;
+  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
   
-  // Step 1: try to download remote data for merge
-  fetch(url, { cache: 'no-cache' })
+  // Step 1: try to download remote data via API (no CDN cache)
+  fetch(url, { cache: 'no-cache', headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } })
     .then(function(r) {
       if (r.status === 404) return null;
       if (!r.ok) return null; // ignore error on first setup
       return r.json();
     })
-    .then(function(remote) {
+    .then(function(fileInfo) {
+      var remote = null;
+      if (fileInfo && fileInfo.content) {
+        try {
+          var raw = atob(fileInfo.content);
+          var jsonStr = decodeURIComponent(escape(raw));
+          remote = JSON.parse(jsonStr);
+        } catch(e) {
+          remote = null;
+        }
+      }
       // Merge remote + local if remote exists
       if (remote && remote.phrases) {
         var seenIds = {};
