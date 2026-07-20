@@ -630,7 +630,7 @@ function syncUploadToRepo(token, message) {
   return new Promise(function(resolve, reject) {
     var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
     
-    // Step 1: check if file exists and get its SHA
+    // Step 1: GET latest remote data + SHA (API, no CDN cache)
     fetch(url, {
       cache: 'no-cache',
       headers: {
@@ -639,25 +639,72 @@ function syncUploadToRepo(token, message) {
       }
     })
     .then(function(r) {
-      if (r.status === 404) return null; // new file
+      if (r.status === 404) return { fileInfo: null, remoteData: null };
       if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
-      return r.json();
+      return r.json().then(function(fileInfo) {
+        var remoteData = null;
+        if (fileInfo && fileInfo.content) {
+          try {
+            var raw = atob(fileInfo.content);
+            var jsonStr = decodeURIComponent(escape(raw));
+            remoteData = JSON.parse(jsonStr);
+          } catch(e) { remoteData = null; }
+        }
+        return { fileInfo: fileInfo, remoteData: remoteData };
+      });
     })
-    .then(function(fileInfo) {
-      var content = JSON.stringify({
-        phrases: data,
-        vocab: vocabData,
+    .then(function(result) {
+      var fileInfo = result.fileInfo;
+      var remoteData = result.remoteData;
+      
+      // Step 2: merge remote + local
+      var mergedPhrases = [];
+      var seenPhraseIds = {};
+      var mergedVocab = [];
+      var seenVocabIds = {};
+      
+      function addItem(id, item, target, seen, mergeKey) {
+        if (!seen[id]) {
+          seen[id] = true;
+          target.push(item);
+        } else {
+          var existing = target.find(function(x) { return x.id === id; });
+          if (existing && (item[mergeKey] || 0) > (existing[mergeKey] || 0)) {
+            Object.assign(existing, item);
+          }
+        }
+      }
+      
+      // Remote items first, then local items (for dedup keep higher mastery)
+      if (remoteData && remoteData.phrases) {
+        remoteData.phrases.sort(function(a, b) { return b.id - a.id; });
+        remoteData.phrases.forEach(function(p) { addItem(p.id, p, mergedPhrases, seenPhraseIds, 'mastery'); });
+      }
+      data.forEach(function(p) { addItem(p.id, p, mergedPhrases, seenPhraseIds, 'mastery'); });
+      
+      if (remoteData && remoteData.vocab) {
+        remoteData.vocab.sort(function(a, b) { return b.id - a.id; });
+        remoteData.vocab.forEach(function(v) { addItem(v.id, v, mergedVocab, seenVocabIds, 'mastery'); });
+      }
+      vocabData.forEach(function(v) { addItem(v.id, v, mergedVocab, seenVocabIds, 'mastery'); });
+      
+      mergedPhrases.sort(function(a, b) { return b.id - a.id; });
+      mergedVocab.sort(function(a, b) { return b.id - a.id; });
+      
+      // Step 3: PUT merged data
+      var uploadContent = JSON.stringify({
+        phrases: mergedPhrases,
+        vocab: mergedVocab,
         updatedAt: new Date().toISOString()
       });
       
       var body = {
         message: message || 'sync phrasebook data',
-        content: btoa(unescape(encodeURIComponent(content))),
+        content: btoa(unescape(encodeURIComponent(uploadContent))),
         branch: SYNC_BRANCH
       };
       if (fileInfo && fileInfo.sha) body.sha = fileInfo.sha;
       
-      // Step 2: PUT (create or update)
       return fetch(url, {
         method: 'PUT',
         headers: {
@@ -665,35 +712,23 @@ function syncUploadToRepo(token, message) {
           'Accept': 'application/vnd.github.v3+json'
         },
         body: JSON.stringify(body)
+      })
+      .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
+        return r.json();
+      })
+      .then(function(putResult) {
+        var newSha = putResult.content ? putResult.content.sha : '';
+        return { newSha: newSha, mergedPhrases: mergedPhrases, mergedVocab: mergedVocab };
       });
     })
-    .then(function(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
-      return r.json();
-    })
     .then(function(result) {
-      var newSha = result.content ? result.content.sha : '';
-      resolve(newSha);
+      resolve(result);
     })
     .catch(function(e) {
       reject(e);
     });
   });
-}
-// Show a toast notification at the top
-function showSyncToast(msg, isOk) {
-  var el = $('sync-toast');
-  if(!el) return;
-  el.textContent = msg;
-  el.style.background = isOk ? 'var(--success)' : 'var(--danger)';
-  el.style.color = '#fff';
-  el.style.opacity = '1';
-  el.style.transform = 'translateY(0)';
-  clearTimeout(el._hide);
-  el._hide = setTimeout(function() {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-20px)';
-  }, 2500);
 }
 
 // Main sync button handler: one-click sync all
@@ -706,90 +741,16 @@ function syncAll() {
     return;
   }
   
-  showSyncToast('🔄 双向同步中...', false);
+  showSyncToast('🔄 同步中...', false);
   
-  var token = cfg.token;
-  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
-  
-  // Step 1: download remote data via API (no CDN cache)
-  fetch(url, { cache: 'no-cache', headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } })
-    .then(function(r) {
-      if (r.status === 404) return null;
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'HTTP ' + r.status); });
-      return r.json();
-    })
-    .then(function(fileInfo) {
-      var remote = null;
-      if (fileInfo && fileInfo.content) {
-        try {
-          var raw = atob(fileInfo.content);
-          var jsonStr = decodeURIComponent(escape(raw));
-          remote = JSON.parse(jsonStr);
-        } catch(e) {
-          remote = null;
-        }
-      }
-      // Step 2: merge remote + local
-      var mergedPhrases = [];
-      var seenPhraseIds = {};
-      var mergedVocab = [];
-      var seenVocabIds = {};
-      
-      function addPhrase(p) {
-        if (!seenPhraseIds[p.id]) {
-          seenPhraseIds[p.id] = true;
-          mergedPhrases.push(p);
-        } else {
-          // Already have this ID, keep whichever has higher mastery
-          var existing = mergedPhrases.find(function(x) { return x.id === p.id; });
-          if (existing && (p.mastery || 0) > (existing.mastery || 0)) {
-            Object.assign(existing, p);
-          }
-        }
-      }
-      function addVocab(v) {
-        if (!seenVocabIds[v.id]) {
-          seenVocabIds[v.id] = true;
-          mergedVocab.push(v);
-        } else {
-          var existing = mergedVocab.find(function(x) { return x.id === v.id; });
-          if (existing && (v.mastery || 0) > (existing.mastery || 0)) {
-            Object.assign(existing, v);
-          }
-        }
-      }
-      
-      // Add remote phrases first
-      if (remote && remote.phrases) {
-        // Sort remote by id descending (newest first) so when merging with local we keep newest
-        remote.phrases.sort(function(a, b) { return b.id - a.id; });
-        remote.phrases.forEach(addPhrase);
-      }
-      // Add local phrases (will merge duplicates)
-      data.forEach(addPhrase);
-      
-      if (remote && remote.vocab) {
-        remote.vocab.sort(function(a, b) { return b.id - a.id; });
-        remote.vocab.forEach(addVocab);
-      }
-      vocabData.forEach(addVocab);
-      
-      // Sort merged by id desc
-      mergedPhrases.sort(function(a, b) { return b.id - a.id; });
-      mergedVocab.sort(function(a, b) { return b.id - a.id; });
-      
-      // Step 3: update local state
-      data = mergedPhrases;
-      vocabData = mergedVocab;
+  syncUploadToRepo(cfg.token, 'sync phrasebook data')
+    .then(function(result) {
+      data = result.mergedPhrases;
+      vocabData = result.mergedVocab;
       save();
       vocabSave();
-      
-      // Step 4: upload merged data
-      return syncUploadToRepo(token, 'sync phrasebook data');
-    })
-    .then(function(newSha) {
-      saveSyncConfig({ token: token, fileSha: newSha });
-      showSyncToast('✅ 双向同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+      saveSyncConfig({ token: cfg.token, fileSha: result.newSha });
+      showSyncToast('✅ 同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
       nav(page);
     })
     .catch(function(e) {
@@ -806,70 +767,17 @@ function setupSync() {
     return;
   }
   
-  $('sync-status-msg').textContent = '双向同步中...';
+  $('sync-status-msg').textContent = '同步中...';
   $('sync-status-msg').style.color = 'var(--text2)';
   
-  var url = 'https://api.github.com/repos/' + SYNC_REPO + '/contents/' + SYNC_PATH;
-  
-  // Step 1: try to download remote data via API (no CDN cache)
-  fetch(url, { cache: 'no-cache', headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } })
-    .then(function(r) {
-      if (r.status === 404) return null;
-      if (!r.ok) return null; // ignore error on first setup
-      return r.json();
-    })
-    .then(function(fileInfo) {
-      var remote = null;
-      if (fileInfo && fileInfo.content) {
-        try {
-          var raw = atob(fileInfo.content);
-          var jsonStr = decodeURIComponent(escape(raw));
-          remote = JSON.parse(jsonStr);
-        } catch(e) {
-          remote = null;
-        }
-      }
-      // Merge remote + local if remote exists
-      if (remote && remote.phrases) {
-        var seenIds = {};
-        remote.phrases.sort(function(a, b) { return b.id - a.id; });
-        // Keep remote first, then merge local on top
-        var merged = [];
-        remote.phrases.forEach(function(p) { if (!seenIds[p.id]) { seenIds[p.id] = true; merged.push(p); } });
-        data.forEach(function(p) {
-          if (!seenIds[p.id]) { seenIds[p.id] = true; merged.push(p); }
-          else {
-            var ex = merged.find(function(x) { return x.id === p.id; });
-            if (ex && (p.mastery||0) > (ex.mastery||0)) Object.assign(ex, p);
-          }
-        });
-        merged.sort(function(a, b) { return b.id - a.id; });
-        data = merged;
-      }
-      if (remote && remote.vocab) {
-        var seenIds2 = {};
-        remote.vocab.sort(function(a, b) { return b.id - a.id; });
-        var merged2 = [];
-        remote.vocab.forEach(function(v) { if (!seenIds2[v.id]) { seenIds2[v.id] = true; merged2.push(v); } });
-        vocabData.forEach(function(v) {
-          if (!seenIds2[v.id]) { seenIds2[v.id] = true; merged2.push(v); }
-          else {
-            var ex2 = merged2.find(function(x) { return x.id === v.id; });
-            if (ex2 && (v.mastery||0) > (ex2.mastery||0)) Object.assign(ex2, v);
-          }
-        });
-        merged2.sort(function(a, b) { return b.id - a.id; });
-        vocabData = merged2;
-      }
+  syncUploadToRepo(token, 'init phrasebook sync')
+    .then(function(result) {
+      data = result.mergedPhrases;
+      vocabData = result.mergedVocab;
       save();
       vocabSave();
-      
-      // Step 2: upload merged data
-      return syncUploadToRepo(token, 'init phrasebook sync');
-    })
-    .then(function(newSha) {
-      saveSyncConfig({ token: token, fileSha: newSha });
-      $('sync-status-msg').textContent = '✅ 设置完成！双向同步已开启';
+      saveSyncConfig({ token: token, fileSha: result.newSha });
+      $('sync-status-msg').textContent = '✅ 设置完成！数据已同步';
       $('sync-status-msg').style.color = 'var(--success)';
       setTimeout(closeSyncModal, 1500);
     })
