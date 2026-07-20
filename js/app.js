@@ -443,6 +443,17 @@ function renderStats() {
     });
   }
   h += `</div>`;
+  
+  // Sync card
+  h += '<div class="card">';
+  h += '<div class="fw-6 mb-8">☁️ 云同步</div>';
+  h += '<div style="font-size:.8125rem;color:var(--muted);margin-bottom:10px">一键备份词组和生词到云端，多设备共享数据</div>';
+  h += '<div class="flex" style="gap:8px">';
+  h += '<button class="btn btn-primary" style="flex:1" onclick="syncAll()">🔄 一键同步</button>';
+  h += '<button class="btn btn-outline" style="flex:1" onclick="syncPull()">📥 下载</button>';
+  h += '</div>';
+  h += '</div>';
+  
   $('p-stats').innerHTML = h;
 }
 
