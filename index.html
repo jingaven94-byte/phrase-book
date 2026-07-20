@@ -15,6 +15,7 @@
     <h1>📝 语块本</h1>
     <div class="header-actions">
       <button class="icon-btn" onclick="toggleSearch()">🔍</button>
+      <button class="icon-btn" id="sync-btn" onclick="openSyncModal()" title="同步">🔄</button>
     </div>
   </header>
 
@@ -113,6 +114,37 @@
         <button type="submit" class="btn btn-primary btn-block">保存</button>
       </form>
       <button class="btn btn-ghost btn-block mt-8" onclick="closeVocabModal()">取消</button>
+    </div>
+  </div>
+
+  
+  <!-- Sync Modal -->
+  <div class="modal" id="modal-sync">
+    <div class="modal-bg" onclick="closeSyncModal()"></div>
+    <div class="modal-body">
+      <div class="modal-title">同步设置</div>
+      <p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">使用 GitHub Gist 实现多设备数据同步，无需服务器</p>
+      <div class="field">
+        <label>GitHub Token</label>
+        <div class="input-row">
+          <input type="password" id="sync-token" placeholder="ghp_xxxxxxxxxxxx" />
+          <button type="button" class="btn btn-sm btn-ghost" onclick="var t=document.getElementById('sync-token');t.type=t.type==='password'?'text':'password'">👁</button>
+        </div>
+        <div style="font-size:.6875rem;color:var(--muted);margin-top:4px">需要 gist 读写权限，<a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary)">去 GitHub 生成</a></div>
+      </div>
+      <div class="field" id="sync-gist-field" style="display:none">
+        <label>Gist ID</label>
+        <input type="text" id="sync-gist-id" readonly style="background:var(--bg);font-size:.75rem" />
+      </div>
+      <div id="sync-status-msg" style="font-size:.8125rem;margin-bottom:12px;min-height:20px"></div>
+      <div class="flex" style="gap:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="syncNow()">🔄 立即同步</button>
+      </div>
+      <div class="flex" style="gap:8px;margin-top:8px">
+        <button class="btn btn-sm btn-outline" style="flex:1" onclick="syncToCloud()">📤 上传到云端</button>
+        <button class="btn btn-sm btn-outline" style="flex:1" onclick="syncFromCloud()">📥 从云端下载</button>
+      </div>
+      <button class="btn btn-ghost btn-block mt-16" onclick="closeSyncModal()">关闭</button>
     </div>
   </div>
 

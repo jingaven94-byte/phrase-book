@@ -25,7 +25,17 @@ function load() {
   try { const raw = localStorage.getItem(KEY); if (raw) data = JSON.parse(raw); } catch(e) {}
   if (!Array.isArray(data)) data = [];
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+function save() { 
+  localStorage.setItem(KEY, JSON.stringify(data)); 
+  // Auto-sync after save (debounced)
+  if(typeof syncDebounce !== 'undefined') clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(function() {
+    var token = localStorage.getItem('phrasebook_sync');
+    if(token) {
+      try { var s = JSON.parse(token); if(s.token && s.gistId) syncNow(); } catch(e) {}
+    }
+  }, 3000);
+}
 
 // ─── Navigation ───
 function nav(p) {
@@ -119,6 +129,7 @@ function deleteEntry(id, e) {
 var _recognition = null;
 var _recording = false;
 var _currentTarget = null;
+var syncDebounce = null;
 
 function startVoiceInput(btn){
   var targetId = btn.dataset.target;
@@ -548,17 +559,185 @@ function getWeekData() {
   return result;
 }
 
+
+// ─── Sync ───
+const GIST_FILENAME = 'phrasebook-data.json';
+var syncStatus = 'idle';
+
+function loadSyncSettings() {
+  try {
+    var raw = localStorage.getItem('phrasebook_sync');
+    if (raw) {
+      var s = JSON.parse(raw);
+      $('sync-token').value = s.token || '';
+      if(s.gistId) {
+        $('sync-gist-id').value = s.gistId;
+        $('sync-gist-field').style.display = 'block';
+      }
+    }
+  } catch(e) {}
+}
+
+function saveSyncSettings() {
+  localStorage.setItem('phrasebook_sync', JSON.stringify({
+    token: $('sync-token').value.trim(),
+    gistId: $('sync-gist-id').value.trim()
+  }));
+}
+
+function openSyncModal() {
+  loadSyncSettings();
+  $('modal-sync').classList.add('open');
+  updateSyncStatusUI();
+}
+
+function closeSyncModal() { $('modal-sync').classList.remove('open'); }
+
+function updateSyncStatusUI(msg, isError) {
+  var el = $('sync-status-msg');
+  if(!el) return;
+  if(msg) {
+    el.textContent = msg;
+    el.style.color = isError ? 'var(--danger)' : 'var(--text2)';
+  } else {
+    el.textContent = '';
+  }
+}
+
+function getSyncContent() {
+  return JSON.stringify({
+    phrases: data,
+    vocab: vocabData,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+function syncNow() {
+  var token = $('sync-token').value.trim();
+  if(!token) {
+    updateSyncStatusUI('请先输入 GitHub Token', true);
+    return;
+  }
+  saveSyncSettings();
+  updateSyncStatusUI('同步中...', false);
+  
+  var gistId = $('sync-gist-id').value.trim();
+  
+  var content = getSyncContent();
+  var body = {
+    description: '语块本同步数据',
+    files: {}
+  };
+  body.files[GIST_FILENAME] = { content: content };
+  
+  var url, method;
+  if(gistId) {
+    url = 'https://api.github.com/gists/' + gistId;
+    method = 'PATCH';
+  } else {
+    url = 'https://api.github.com/gists';
+    method = 'POST';
+  }
+  
+  fetch(url, {
+    method: method,
+    headers: {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github.v3+json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) {
+    if(!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+    return r.json();
+  })
+  .then(function(result) {
+    if(!gistId) {
+      $('sync-gist-id').value = result.id;
+      $('sync-gist-field').style.display = 'block';
+      saveSyncSettings();
+    }
+    updateSyncStatusUI('✅ 同步成功！', false);
+    // Update the sync button indicator
+    var btn = $('sync-btn');
+    if(btn) btn.style.opacity = '1';
+  })
+  .catch(function(e) {
+    updateSyncStatusUI('❌ 同步失败: ' + e.message, true);
+  });
+}
+
+function syncToCloud() {
+  var token = $('sync-token').value.trim();
+  if(!token) { updateSyncStatusUI('请先输入 GitHub Token', true); return; }
+  saveSyncSettings();
+  var gistId = $('sync-gist-id').value.trim();
+  if(!gistId) { updateSyncStatusUI('请先点击"立即同步"创建 Gist', true); return; }
+  syncNow();
+}
+
+function syncFromCloud() {
+  var token = $('sync-token').value.trim();
+  var gistId = $('sync-gist-id').value.trim();
+  if(!token || !gistId) { updateSyncStatusUI('请先设置同步后再下载', true); return; }
+  
+  updateSyncStatusUI('下载中...', false);
+  fetch('https://api.github.com/gists/' + gistId, {
+    headers: {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github.v3+json'
+    }
+  })
+  .then(function(r) {
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(result) {
+    var file = result.files[GIST_FILENAME];
+    if(file && file.content) {
+      var remote = JSON.parse(file.content);
+      if(remote.phrases) {
+        data = remote.phrases;
+        save();
+      }
+      if(remote.vocab) {
+        vocabData = remote.vocab;
+        vocabSave();
+      }
+      updateSyncStatusUI('✅ 下载成功！当前页面已更新', false);
+      // Refresh current view
+      nav(page);
+    } else {
+      updateSyncStatusUI('❌ 云端没有找到数据', true);
+    }
+  })
+  .catch(function(e) {
+    updateSyncStatusUI('❌ 下载失败: ' + e.message, true);
+  });
+}
+
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', () => {
 function vocabLoad() {
   try { const raw = localStorage.getItem(VOCAB_KEY); if (raw) vocabData = JSON.parse(raw); } catch(e) {}
   if (!Array.isArray(vocabData)) vocabData = [];
 }
-function vocabSave() { localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); }
+function vocabSave() { 
+  localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); 
+  // Auto-sync after saving vocab
+  if(typeof syncDebounce !== 'undefined') clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(function() {
+    var token = localStorage.getItem('phrasebook_sync');
+    if(token) {
+      try { var s = JSON.parse(token); if(s.token && s.gistId) syncNow(); } catch(e) {}
+    }
+  }, 3000);
+}
 
 
   load();
   vocabLoad();
+  loadSyncSettings();
   nav('today');
 
   document.querySelectorAll('.nav-item').forEach(el => {
