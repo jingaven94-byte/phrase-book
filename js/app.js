@@ -138,22 +138,6 @@ function getDeletedIds() {
   return { phrases: {}, vocab: {} };
 }
 
-
-function getDeletedIds() {
-  try {
-    var raw = localStorage.getItem("phrasebook_deleted");
-    if (raw) {
-      var parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        if (!parsed.phrases) parsed.phrases = {};
-        if (!parsed.vocab) parsed.vocab = {};
-        return parsed;
-      }
-    }
-  } catch(e) {}
-  return { phrases: {}, vocab: {} };
-}
-
 function deleteEntry(id, e) {
   if (e) e.stopPropagation();
   if (!confirm('删除这个词组？')) return;
@@ -838,14 +822,6 @@ function syncUploadToRepo(token, message) {
       
       mergedPhrases.sort(function(a, b) { return b.id - a.id; });
       mergedVocab.sort(function(a, b) { return b.id - a.id; });
-      var delIds = (remoteData && remoteData.deletedIds) ? JSON.parse(JSON.stringify(remoteData.deletedIds)) : { phrases: {}, vocab: {} };
-      var localDelIds = getDeletedIds();
-      for (var id in localDelIds.phrases) { if (!delIds.phrases) delIds.phrases = {}; delIds.phrases[id] = true; }
-      for (var id in localDelIds.vocab) { if (!delIds.vocab) delIds.vocab = {}; delIds.vocab[id] = true; }
-      localStorage.setItem("phrasebook_deleted", JSON.stringify(delIds));
-      mergedPhrases = mergedPhrases.filter(function(p) { return !(delIds.phrases && delIds.phrases[p.id]); });
-      mergedVocab = mergedVocab.filter(function(v) { return !(delIds.vocab && delIds.vocab[v.id]); });
-
       // Filter out deleted items (sync deletion across devices)
       var delIds = (remoteData && remoteData.deletedIds) ? JSON.parse(JSON.stringify(remoteData.deletedIds)) : { phrases: {}, vocab: {} };
       var localDelIds = getDeletedIds();
