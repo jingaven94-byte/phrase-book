@@ -4,6 +4,7 @@ const CATS = ['日常对话','商务英语','TED演讲','阅读','其他'];
 const CAT_COLORS = { '日常对话':'#10B981', '商务英语':'#6366F1', 'TED演讲':'#F59E0B', '阅读':'#8B5CF6', '其他':'#94A3B8' };
 const CAT_CLASS = { '日常对话':'badge-daily', '商务英语':'badge-biz', 'TED演讲':'badge-ted', '阅读':'badge-read', '其他':'badge-other' };
 const KEY = 'phrasebook_data';
+const VOCAB_KEY = 'phrasebook_vocab';
 
 const $ = id => document.getElementById(id);
 const esc = s => { if(!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -14,6 +15,7 @@ const weekDays = ['日','一','二','三','四','五','六'];
 
 // ─── State ───
 let data = [];
+let vocabData = [];
 let page = 'today';
 let bankFilter = 'all';
 let reviewMode = 'due';
@@ -36,6 +38,7 @@ function nav(p) {
   else if (p === 'bank') renderBank();
   else if (p === 'review') renderReview();
   else if (p === 'stats') renderStats();
+  else if (p === 'vocab') renderVocab();
 }
 
 // ─── Modal ───
@@ -436,6 +439,77 @@ function renderStats() {
   $('p-stats').innerHTML = h;
 }
 
+// ─── Vocab (生词本) ───
+function renderVocab() {
+  var h = '';
+  h += `<!-- 添加按钮 --><div class="action-bar"><button class="btn btn-primary" onclick="openVocabModal()">➕ 添加生词</button></div>`;
+  h += `<div class="muted" style="font-size:.8125rem;margin-bottom:10px">共 ${vocabData.length} 个生词</div>`;
+  if (!vocabData.length) {
+    h += `<div class="empty-state"><div class="icon">📖</div><div class="title">还没有生词</div><div class="desc">点击"添加生词"开始记录</div></div>`;
+  } else {
+    const sorted = [...vocabData].sort((a,b) => b.id - a.id);
+    sorted.forEach(v => { h += vocabEntryHTML(v); });
+  }
+  $('p-vocab').innerHTML = h;
+}
+
+function vocabEntryHTML(v) {
+  const stars = '★'.repeat(Math.min(v.mastery,5)) + '☆'.repeat(Math.max(5-v.mastery,0));
+  var h = `<div class="entry">`;
+  h += `<button class="entry-delete" onclick="vocabDeleteEntry(${v.id},event)">✕</button>`;
+  h += `<div class="entry-phrase">${esc(v.word)}</div>`;
+  h += `<div class="entry-meaning">${esc(v.meaning)}</div>`;
+  h += `<div class="entry-footer"><span class="entry-date">📅 ${v.date}</span><span class="entry-stars">${stars}</span></div>`;
+  h += `</div>`;
+  return h;
+}
+
+function vocabDeleteEntry(id, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('删除这个生词？')) return;
+  vocabData = vocabData.filter(v => v.id !== id);
+  vocabSave();
+  renderVocab();
+}
+
+function openVocabModal(editId) {
+  $('vocab-modal-title').textContent = editId ? '编辑生词' : '添加生词';
+  $('vocab-edit-id').value = editId || '';
+  if (editId) {
+    const v = vocabData.find(x => x.id === editId);
+    if (!v) return;
+    $('vf-word').value = v.word;
+    $('vf-meaning').value = v.meaning;
+  } else {
+    $('vf-word').value = '';
+    $('vf-meaning').value = '';
+  }
+  $('vocab-modal').classList.add('open');
+  setTimeout(() => $('vf-word').focus(), 300);
+}
+
+function closeVocabModal() { $('vocab-modal').classList.remove('open'); }
+
+function saveVocabEntry(e) {
+  e.preventDefault();
+  const id = $('vocab-edit-id').value;
+  const word = $('vf-word').value.trim();
+  const meaning = $('vf-meaning').value.trim();
+  if (!word || !meaning) return false;
+
+  if (id) {
+    const v = vocabData.find(x => x.id === parseInt(id));
+    if (v) { v.word = word; v.meaning = meaning; }
+  } else {
+    vocabData.unshift({ id: now(), word: word, meaning: meaning, date: today(), mastery: 0, reviewCount: 0, lastReview: null });
+  }
+  vocabSave();
+  closeVocabModal();
+  renderVocab();
+  return false;
+}
+
+
 // ─── Helpers ───
 function entryHTML(p, isSearch) {
   const badgeClass = CAT_CLASS[p.category] || 'badge-other';
@@ -469,7 +543,15 @@ function getWeekData() {
 
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', () => {
+function vocabLoad() {
+  try { const raw = localStorage.getItem(VOCAB_KEY); if (raw) vocabData = JSON.parse(raw); } catch(e) {}
+  if (!Array.isArray(vocabData)) vocabData = [];
+}
+function vocabSave() { localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); }
+
+
   load();
+  vocabLoad();
   nav('today');
 
   document.querySelectorAll('.nav-item').forEach(el => {

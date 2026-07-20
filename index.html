@@ -23,12 +23,14 @@
     <div class="page" id="p-bank"></div>
     <div class="page" id="p-review"></div>
     <div class="page" id="p-stats"></div>
+    <div class="page" id="p-vocab"></div>
   </main>
 
   <nav class="nav">
     <button class="nav-item active" data-page="today"><span class="ni">📋</span>今日</button>
     <button class="nav-item" data-page="bank"><span class="ni">📚</span>词库</button>
     <button class="nav-item" data-page="review"><span class="ni">🔄</span>复习</button>
+    <button class="nav-item" data-page="vocab"><span class="ni">📖</span>生词</button>
     <button class="nav-item" data-page="stats"><span class="ni">📊</span>统计</button>
   </nav>
 
@@ -78,6 +80,28 @@
         <button type="submit" class="btn btn-primary btn-block">保存</button>
       </form>
       <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+
+
+  <!-- Vocab Modal -->
+  <div class="modal" id="vocab-modal">
+    <div class="modal-bg" onclick="closeVocabModal()"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="vocab-modal-title">添加生词</div>
+      <form onsubmit="return saveVocabEntry(event)">
+        <input type="hidden" id="vocab-edit-id" />
+        <div class="field">
+          <label>英文单词</label>
+          <input type="text" id="vf-word" placeholder="e.g. essential" required />
+        </div>
+        <div class="field">
+          <label>中文释义</label>
+          <input type="text" id="vf-meaning" placeholder="必要的，基本的" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">保存</button>
+      </form>
+      <button class="btn btn-ghost btn-block mt-8" onclick="closeVocabModal()">取消</button>
     </div>
   </div>
 
