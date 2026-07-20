@@ -15,7 +15,7 @@
     <h1>📝 语块本</h1>
     <div class="header-actions">
       <button class="icon-btn" onclick="toggleSearch()">🔍</button>
-      <button class="icon-btn" id="sync-btn" onclick="openSyncModal()" title="同步">🔄</button>
+      <button class="icon-btn" id="sync-btn" onclick="syncAll()" title="同步">🔄</button>
     </div>
   </header>
 
@@ -126,8 +126,8 @@
   <div class="modal" id="modal-sync">
     <div class="modal-bg" onclick="closeSyncModal()"></div>
     <div class="modal-body">
-      <div class="modal-title">同步设置</div>
-      <p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">使用 GitHub Gist 实现多设备数据同步，无需服务器</p>
+      <div class="modal-title">⚙️ 同步设置</div>
+      <p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">只需设置一次 GitHub Token，之后点击🔄即可一键同步所有数据</p>
       <div class="field">
         <label>GitHub Token</label>
         <div class="input-row">
@@ -136,17 +136,10 @@
         </div>
         <div style="font-size:.6875rem;color:var(--muted);margin-top:4px">需要 gist 读写权限，<a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary)">去 GitHub 生成</a></div>
       </div>
-      <div class="field" id="sync-gist-field" style="display:none">
-        <label>Gist ID</label>
-        <input type="text" id="sync-gist-id" readonly style="background:var(--bg);font-size:.75rem" />
-      </div>
       <div id="sync-status-msg" style="font-size:.8125rem;margin-bottom:12px;min-height:20px"></div>
-      <div class="flex" style="gap:8px">
-        <button class="btn btn-primary" style="flex:1" onclick="syncNow()">🔄 立即同步</button>
-      </div>
-      <div class="flex" style="gap:8px;margin-top:8px">
-        <button class="btn btn-sm btn-outline" style="flex:1" onclick="syncToCloud()">📤 上传到云端</button>
-        <button class="btn btn-sm btn-outline" style="flex:1" onclick="syncFromCloud()">📥 从云端下载</button>
+      <button class="btn btn-primary btn-block" onclick="setupSync()">✅ 配置并同步</button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="syncPull();closeSyncModal();return false" style="font-size:.8125rem;color:var(--muted);text-decoration:none">📥 从云端同步到这台设备</a>
       </div>
       <button class="btn btn-ghost btn-block mt-16" onclick="closeSyncModal()">关闭</button>
     </div>
@@ -164,5 +157,7 @@
   </div>
 
   <script src="js/app.js"></script>
+  <!-- Sync Toast -->
+  <div id="sync-toast" style="position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);padding:10px 20px;border-radius:8px;font-size:.8125rem;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;max-width:90%;text-align:center"></div>
 </body>
 </html>
