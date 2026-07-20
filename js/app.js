@@ -701,18 +701,86 @@ function syncAll() {
   closeAllModals();
   var cfg = getSyncConfig();
   
-  // First time: show setup modal
   if(!cfg || !cfg.token) {
     openSyncSettings();
     return;
   }
   
-  showSyncToast('🔄 同步中...', false);
+  showSyncToast('🔄 双向同步中...', false);
   
-  syncUploadToRepo(cfg.token, 'sync phrasebook data')
+  var token = cfg.token;
+  var url = 'https://raw.githubusercontent.com/' + SYNC_REPO + '/' + SYNC_BRANCH + '/' + SYNC_PATH;
+  
+  // Step 1: download remote data
+  fetch(url, { cache: 'no-cache' })
+    .then(function(r) {
+      if (r.status === 404) return null; // no remote data yet
+      if (!r.ok) throw new Error('下载失败: HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(remote) {
+      // Step 2: merge remote + local
+      var mergedPhrases = [];
+      var seenPhraseIds = {};
+      var mergedVocab = [];
+      var seenVocabIds = {};
+      
+      function addPhrase(p) {
+        if (!seenPhraseIds[p.id]) {
+          seenPhraseIds[p.id] = true;
+          mergedPhrases.push(p);
+        } else {
+          // Already have this ID, keep whichever has higher mastery
+          var existing = mergedPhrases.find(function(x) { return x.id === p.id; });
+          if (existing && (p.mastery || 0) > (existing.mastery || 0)) {
+            Object.assign(existing, p);
+          }
+        }
+      }
+      function addVocab(v) {
+        if (!seenVocabIds[v.id]) {
+          seenVocabIds[v.id] = true;
+          mergedVocab.push(v);
+        } else {
+          var existing = mergedVocab.find(function(x) { return x.id === v.id; });
+          if (existing && (v.mastery || 0) > (existing.mastery || 0)) {
+            Object.assign(existing, v);
+          }
+        }
+      }
+      
+      // Add remote phrases first
+      if (remote && remote.phrases) {
+        // Sort remote by id descending (newest first) so when merging with local we keep newest
+        remote.phrases.sort(function(a, b) { return b.id - a.id; });
+        remote.phrases.forEach(addPhrase);
+      }
+      // Add local phrases (will merge duplicates)
+      data.forEach(addPhrase);
+      
+      if (remote && remote.vocab) {
+        remote.vocab.sort(function(a, b) { return b.id - a.id; });
+        remote.vocab.forEach(addVocab);
+      }
+      vocabData.forEach(addVocab);
+      
+      // Sort merged by id desc
+      mergedPhrases.sort(function(a, b) { return b.id - a.id; });
+      mergedVocab.sort(function(a, b) { return b.id - a.id; });
+      
+      // Step 3: update local state
+      data = mergedPhrases;
+      vocabData = mergedVocab;
+      save();
+      vocabSave();
+      
+      // Step 4: upload merged data
+      return syncUploadToRepo(token, 'sync phrasebook data');
+    })
     .then(function(newSha) {
-      saveSyncConfig({ token: cfg.token, fileSha: newSha });
-      showSyncToast('✅ 同步成功！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+      saveSyncConfig({ token: token, fileSha: newSha });
+      showSyncToast('✅ 双向同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
+      nav(page);
     })
     .catch(function(e) {
       showSyncToast('❌ 同步失败: ' + e.message, false);
@@ -728,13 +796,60 @@ function setupSync() {
     return;
   }
   
-  $('sync-status-msg').textContent = '配置中...';
+  $('sync-status-msg').textContent = '双向同步中...';
   $('sync-status-msg').style.color = 'var(--text2)';
   
-  syncUploadToRepo(token, 'init phrasebook sync')
+  var url = 'https://raw.githubusercontent.com/' + SYNC_REPO + '/' + SYNC_BRANCH + '/' + SYNC_PATH;
+  
+  // Step 1: try to download remote data for merge
+  fetch(url, { cache: 'no-cache' })
+    .then(function(r) {
+      if (r.status === 404) return null;
+      if (!r.ok) return null; // ignore error on first setup
+      return r.json();
+    })
+    .then(function(remote) {
+      // Merge remote + local if remote exists
+      if (remote && remote.phrases) {
+        var seenIds = {};
+        remote.phrases.sort(function(a, b) { return b.id - a.id; });
+        // Keep remote first, then merge local on top
+        var merged = [];
+        remote.phrases.forEach(function(p) { if (!seenIds[p.id]) { seenIds[p.id] = true; merged.push(p); } });
+        data.forEach(function(p) {
+          if (!seenIds[p.id]) { seenIds[p.id] = true; merged.push(p); }
+          else {
+            var ex = merged.find(function(x) { return x.id === p.id; });
+            if (ex && (p.mastery||0) > (ex.mastery||0)) Object.assign(ex, p);
+          }
+        });
+        merged.sort(function(a, b) { return b.id - a.id; });
+        data = merged;
+      }
+      if (remote && remote.vocab) {
+        var seenIds2 = {};
+        remote.vocab.sort(function(a, b) { return b.id - a.id; });
+        var merged2 = [];
+        remote.vocab.forEach(function(v) { if (!seenIds2[v.id]) { seenIds2[v.id] = true; merged2.push(v); } });
+        vocabData.forEach(function(v) {
+          if (!seenIds2[v.id]) { seenIds2[v.id] = true; merged2.push(v); }
+          else {
+            var ex2 = merged2.find(function(x) { return x.id === v.id; });
+            if (ex2 && (v.mastery||0) > (ex2.mastery||0)) Object.assign(ex2, v);
+          }
+        });
+        merged2.sort(function(a, b) { return b.id - a.id; });
+        vocabData = merged2;
+      }
+      save();
+      vocabSave();
+      
+      // Step 2: upload merged data
+      return syncUploadToRepo(token, 'init phrasebook sync');
+    })
     .then(function(newSha) {
       saveSyncConfig({ token: token, fileSha: newSha });
-      $('sync-status-msg').textContent = '✅ 设置完成！数据已同步到仓库';
+      $('sync-status-msg').textContent = '✅ 设置完成！双向同步已开启';
       $('sync-status-msg').style.color = 'var(--success)';
       setTimeout(closeSyncModal, 1500);
     })
