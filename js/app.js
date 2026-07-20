@@ -715,7 +715,7 @@ function getWeekData() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(nowD);
     d.setDate(d.getDate() - i);
-    const ds = d.toISOString().slice(0, 10);
+    const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     result.push({ d, c: data.filter(p => p.date === ds).length });
   }
   return result;
