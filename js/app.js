@@ -509,31 +509,24 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  // First: create working overlay
-  var old = document.getElementById('test-overlay');
-  if (old) old.remove();
-  var div = document.createElement('div');
-  div.id = 'test-overlay';
-  div.textContent = '!!! 看到我了吗 !!!';
-  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:#00ff00;color:black;font-size:48px;font-weight:bold;display:flex;align-items:center;justify-content:center;border:15px solid yellow;';
-  document.body.appendChild(div);
-  
-  // Now check vocab-modal parent
+  closeAllModals();
+  var title = document.getElementById('vocab-modal-title');
+  if (title) title.textContent = editId ? '编辑生词' : '添加生词';
+  document.getElementById('vocab-edit-id').value = editId || '';
+  if (editId) {
+    var v = vocabData.find(function(x) { return x.id === parseInt(editId); });
+    if (v) {
+      document.getElementById('vf-word').value = v.word;
+      document.getElementById('vf-meaning').value = v.meaning;
+    }
+  } else {
+    document.getElementById('vf-word').value = '';
+    document.getElementById('vf-meaning').value = '';
+  }
   var vm = document.getElementById('vocab-modal');
   if (vm) {
-    var p = vm.parentNode;
-    var msg = 'vocab-modal parent: ' + (p ? p.tagName + (p.id ? '#'+p.id : '') + (p.className ? '.'+p.className : '') : 'NO PARENT');
-    msg += ' | childCount=' + (p ? p.children.length : 'N/A');
-    msg += ' | vm in parent=' + (p ? [...p.children].indexOf(vm) : 'N/A');
-    msg += ' | vm offsetParent=' + (vm.offsetParent ? vm.offsetParent.tagName : 'null');
-    msg += ' | vm offsetWidth=' + vm.offsetWidth + ' offsetHeight=' + vm.offsetHeight;
-    msg += ' | cs.transform=' + getComputedStyle(vm).transform;
-    msg += ' | cs.clip=' + getComputedStyle(vm).clip;
-    msg += ' | cs.overflow=' + getComputedStyle(vm).overflow;
-    // Also check the style we set
-    var style = vm.getAttribute('style');
-    msg += ' | inline_style=' + (style ? style.substring(0, 80) : 'NONE');
-    alert(msg);
+    vm.classList.add('open');
+    setTimeout(function() { var t = document.getElementById('vf-word'); if(t) t.focus(); }, 300);
   }
 }
 
@@ -629,13 +622,7 @@ function syncAll() {
   
   // First time: show setup modal
   if(!cfg || !cfg.token) {
-    var ms = document.getElementById('modal-sync');
-    if (!ms) return;
-    // Nuclear option: bypass all CSS
-    ms.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
-    ms.classList.add('open');
-    // Focus the token input
-    setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
+    openSyncSettings();
     return;
   }
   
