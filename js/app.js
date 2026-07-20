@@ -509,19 +509,13 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  var m = document.getElementById('vocab-modal');
-  var msg = 'exists=' + (!!m) + ' className=' + (m ? m.className : 'N/A');
-  msg += ' computedDisplay=' + (m ? getComputedStyle(m).display : 'N/A');
-  msg += ' bgExists=' + (m ? !!m.querySelector('.modal-bg') : 'N/A');
-  if (m) {
-    m.classList.add('open');
-    msg += ' afterAdd_computedDisplay=' + getComputedStyle(m).display;
-    msg += ' afterAdd_className=' + m.className;
-  }
-  alert(msg);
-  if (m) {
-    setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
-  }
+  // Highly visible test
+  document.body.style.background = '#ff0000';
+  document.getElementById('vocab-modal').style.background = '#00ff00';
+  document.getElementById('vocab-modal').style.border = '10px solid yellow';
+  document.getElementById('vocab-modal').classList.add('open');
+  // Also write visible text to page
+  document.getElementById('p-vocab').innerHTML = '<div style="color:white;text-align:center;padding:100px 20px;font-size:24px;background:#ff0000">✅ 点击OK之后看弹窗<br><br><span style="font-size:14px">弹窗应该已经显示了，绿色背景+黄色边框</span></div>';
 }
 
 function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
