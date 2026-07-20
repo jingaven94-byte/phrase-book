@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#6366F1" />
+  <title>语块本</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>" />
+</head>
+<body>
+
+  <header class="header">
+    <h1>📝 语块本</h1>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="toggleSearch()">🔍</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="page active" id="p-today"></div>
+    <div class="page" id="p-bank"></div>
+    <div class="page" id="p-review"></div>
+    <div class="page" id="p-stats"></div>
+  </main>
+
+  <nav class="nav">
+    <button class="nav-item active" data-page="today"><span class="ni">📋</span>今日</button>
+    <button class="nav-item" data-page="bank"><span class="ni">📚</span>词库</button>
+    <button class="nav-item" data-page="review"><span class="ni">🔄</span>复习</button>
+    <button class="nav-item" data-page="stats"><span class="ni">📊</span>统计</button>
+  </nav>
+
+  <!-- Add / Edit Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-bg"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="modal-title">添加词组</div>
+      <form onsubmit="return saveEntry(event)">
+        <input type="hidden" id="edit-id" />
+        <div class="field">
+          <label>英文词组</label>
+          <input type="text" id="f-phrase" placeholder="e.g. break the ice" required />
+        </div>
+        <div class="field">
+          <label>中文释义</label>
+          <input type="text" id="f-meaning" placeholder="打破僵局" required />
+        </div>
+        <div class="field">
+          <label>例句（可选）</label>
+          <textarea id="f-example" rows="2" placeholder="I told a joke to break the ice at the meeting."></textarea>
+        </div>
+        <div class="field">
+          <label>例句翻译（可选）</label>
+          <textarea id="f-example-cn" rows="2" placeholder="我讲了个笑话来打破会议上的僵局。"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <label>分类</label>
+            <select id="f-category">
+              <option>日常对话</option>
+              <option>商务英语</option>
+              <option>TED演讲</option>
+              <option>阅读</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1">
+            <label>来源（可选）</label>
+            <input type="text" id="f-source" placeholder="如：TED演讲" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">保存</button>
+      </form>
+      <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+
+  <!-- Search Modal -->
+  <div class="modal" id="modal-search">
+    <div class="modal-bg" onclick="toggleSearch()"></div>
+    <div class="modal-body">
+      <div class="field">
+        <input type="text" id="sq" placeholder="搜索词组、释义..." oninput="doSearch()" autofocus />
+      </div>
+      <div class="search-wrap" id="sr"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

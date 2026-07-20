@@ -1,0 +1,11 @@
+{
+  "name": "语块本 - 英语词组记录",
+  "short_name": "语块本",
+  "description": "记录每天学到的英语词组语块，定期巩固复习",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#6366F1",
+  "orientation": "portrait",
+  "scope": "/"
+}
