@@ -123,9 +123,27 @@ function saveEntry(e) {
   return false;
 }
 
+function getDeletedIds() {
+  try {
+    var raw = localStorage.getItem("phrasebook_deleted");
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        if (!parsed.phrases) parsed.phrases = {};
+        if (!parsed.vocab) parsed.vocab = {};
+        return parsed;
+      }
+    }
+  } catch(e) {}
+  return { phrases: {}, vocab: {} };
+}
+
 function deleteEntry(id, e) {
   if (e) e.stopPropagation();
   if (!confirm('删除这个词组？')) return;
+  var delIds = getDeletedIds();
+  delIds.phrases[id] = true;
+  localStorage.setItem('phrasebook_deleted', JSON.stringify(delIds));
   data = data.filter(p => p.id !== id);
   save();
   nav(page);
@@ -619,6 +637,10 @@ function vocabEntryHTML(v) {
 function vocabDeleteEntry(id, e) {
   if (e) e.stopPropagation();
   if (!confirm('删除这个生词？')) return;
+  var delIds = getDeletedIds();
+  delIds.vocab[id] = true;
+  localStorage.setItem('phrasebook_deleted', JSON.stringify(delIds));
+  showSyncToast('🗑 已记录删除: ' + JSON.stringify(delIds), false);
   vocabData = vocabData.filter(v => v.id !== id);
   vocabSave();
   renderVocab();
@@ -800,11 +822,20 @@ function syncUploadToRepo(token, message) {
       
       mergedPhrases.sort(function(a, b) { return b.id - a.id; });
       mergedVocab.sort(function(a, b) { return b.id - a.id; });
+      // Filter out deleted items (sync deletion across devices)
+      var delIds = (remoteData && remoteData.deletedIds) ? JSON.parse(JSON.stringify(remoteData.deletedIds)) : { phrases: {}, vocab: {} };
+      var localDelIds = getDeletedIds();
+      for (var id in localDelIds.phrases) { if (!delIds.phrases) delIds.phrases = {}; delIds.phrases[id] = true; }
+      for (var id in localDelIds.vocab) { if (!delIds.vocab) delIds.vocab = {}; delIds.vocab[id] = true; }
+      localStorage.setItem('phrasebook_deleted', JSON.stringify(delIds));
+      mergedPhrases = mergedPhrases.filter(function(p) { return !(delIds.phrases && delIds.phrases[p.id]); });
+      mergedVocab = mergedVocab.filter(function(v) { return !(delIds.vocab && delIds.vocab[v.id]); });
       
       // Step 3: PUT merged data
       var uploadContent = JSON.stringify({
         phrases: mergedPhrases,
         vocab: mergedVocab,
+        deletedIds: delIds,
         updatedAt: new Date().toISOString()
       });
       
@@ -851,24 +882,32 @@ function syncAll() {
     return;
   }
   
-  showSyncToast('🔄 双向同步中...', false);
+  // Show deletion tracking data before sync
+  var _delRaw = localStorage.getItem('phrasebook_deleted');
+  var _delStr = _delRaw || '(空)';
+  showSyncToast('🔍 删除追踪: ' + _delStr, false);
   
-  syncUploadToRepo(cfg.token, 'sync phrasebook data')
-    .then(function(result) {
-      data = result.mergedPhrases;
-      vocabData = result.mergedVocab;
-      save();
-      vocabSave();
-      saveSyncConfig({ token: cfg.token, fileSha: result.newSha });
-      showSyncToast('✅ 双向同步完成！' + data.length + ' 词组 · ' + vocabData.length + ' 生词', true);
-      nav(page);
-    })
-    .catch(function(e) {
-      showSyncToast('❌ 同步失败: ' + e.message, false);
-    });
+  var _self = this;
+  setTimeout(function() {
+    showSyncToast('🔄 双向同步中...', false);
+    syncUploadToRepo(cfg.token, 'sync phrasebook data')
+      .then(function(result) {
+        data = result.mergedPhrases;
+        vocabData = result.mergedVocab;
+        save();
+        vocabSave();
+        saveSyncConfig({ token: cfg.token, fileSha: result.newSha });
+        showSyncToast('✅ 同步完成！词组' + data.length + ' · 生词' + vocabData.length, true);
+        nav(page);
+      })
+      .catch(function(e) {
+        showSyncToast('❌ 同步失败: ' + e.message, false);
+      });
+  }, 2000);
 }
 
-// Setup modal: save token and sync
+function setupSync
+function setupSync
 function setupSync() {
   var token = $('sync-token').value.trim();
   if(!token) {
