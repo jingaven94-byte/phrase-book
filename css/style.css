@@ -442,3 +442,56 @@ body {
 .mic-status.listening { color: #EF4444; font-weight: 600; }
 .mic-status.done { color: var(--success); }
 .mic-status.error { color: var(--danger); }
+
+/* Calendar */
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-dow {
+  text-align: center;
+  font-size: .75rem;
+  color: var(--muted);
+  padding: 4px 0;
+  font-weight: 600;
+}
+.cal-cell {
+  text-align: center;
+  padding: 6px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  min-height: 34px;
+  transition: background .15s;
+}
+.cal-cell:active { background: var(--bg2); }
+.cal-empty { cursor: default; }
+.cal-today { border: 1px solid var(--primary); }
+.cal-selected { background: var(--primary); color: #fff; }
+.cal-selected .cal-dot { background: #fff; }
+.cal-has { font-weight: 700; }
+.cal-num {
+  display: block;
+  font-size: .8125rem;
+  line-height: 1.3;
+}
+.cal-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-top: 1px;
+}
+.cal-entries {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}

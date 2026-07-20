@@ -463,13 +463,7 @@ function renderStats() {
   });
   h += `</div></div>`;
 
-  h += `<div class="card"><div class="fw-6 mb-8">本周记录</div><div class="week-chart">`;
-  const maxVal = Math.max(...weekData.map(d => d.c), 1);
-  weekData.forEach(d => {
-    const barH = Math.max(4, d.c / maxVal * 48);
-    h += `<div class="week-bar"><div class="cnt">${d.c}</div><div class="bar" style="height:${barH}px;background:${d.c > 0 ? 'var(--primary)' : 'var(--border)'}"></div><div class="day">${weekDays[d.d.getDay()]}</div></div>`;
-  });
-  h += `</div></div>`;
+  h += renderCalendar();
 
   h += `<div class="card"><div class="fw-6 mb-8">最近添加</div>`;
   const recent = [...data].sort((a,b) => b.id - a.id).slice(0, 5);
@@ -493,6 +487,108 @@ function renderStats() {
   h += '</div>';
   
   $('p-stats').innerHTML = h;
+}
+
+// ─── Calendar ───
+let calendarYear = new Date().getFullYear();
+let calendarMonth = new Date().getMonth();
+let calendarSelectedDate = '';
+const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
+function renderCalendar() {
+  const year = calendarYear;
+  const month = calendarMonth;
+  
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const todayStr = today();
+  
+  // Collect dates with entries for this month
+  const datesWithEntries = {};
+  data.forEach(function(p) {
+    if (p.date && p.date.indexOf(year + '-' + String(month+1).padStart(2,'0')) === 0) {
+      datesWithEntries[p.date] = (datesWithEntries[p.date] || 0) + 1;
+    }
+  });
+  
+  var h = '<div class="card" id="cal-card">';
+  h += '<div class="cal-header">';
+  h += '<button class="btn btn-sm btn-ghost" onclick="changeMonth(-1)">\u25c0</button>';
+  h += '<span class="fw-6">' + year + '\u5e74 ' + MONTH_NAMES[month] + '</span>';
+  h += '<button class="btn btn-sm btn-ghost" onclick="changeMonth(1)">\u25b6</button>';
+  h += '</div>';
+  h += '<div class="cal-grid">';
+  
+  // Day-of-week headers
+  ['\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d','\u65e5'].forEach(function(d) {
+    h += '<div class="cal-dow">' + d + '</div>';
+  });
+  
+  // Empty cells before first day
+  var startOffset = firstDay.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+  for (var i = 0; i < startOffset; i++) {
+    h += '<div class="cal-cell cal-empty"></div>';
+  }
+  
+  // Day cells
+  for (var d = 1; d <= lastDay.getDate(); d++) {
+    var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var hasEntry = datesWithEntries[dateStr] > 0;
+    var isToday = dateStr === todayStr;
+    var isSelected = dateStr === calendarSelectedDate;
+    
+    var cls = 'cal-cell';
+    if (isToday) cls += ' cal-today';
+    if (isSelected) cls += ' cal-selected';
+    if (hasEntry) cls += ' cal-has';
+    
+    h += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="showDayEntries(\'' + dateStr + '\')">';
+    h += '<span class="cal-num">' + d + '</span>';
+    if (hasEntry) h += '<span class="cal-dot"></span>';
+    h += '</div>';
+  }
+  
+  h += '</div>'; // close cal-grid
+  
+  // Pre-render entries for selected date
+  if (calendarSelectedDate && datesWithEntries[calendarSelectedDate]) {
+    var dayItems = data.filter(function(p) { return p.date === calendarSelectedDate; });
+    if (dayItems.length) {
+      h += '<div class="cal-entries">';
+      h += '<div class="fw-6 mb-4" style="font-size:.875rem">\ud83d\udcdd ' + calendarSelectedDate + '\uff08' + dayItems.length + ' \u6761\uff09</div>';
+      dayItems.sort(function(a, b) { return b.id - a.id; });
+      dayItems.forEach(function(p) {
+        h += '<div class="entry" style="margin-bottom:6px;padding:10px 12px">';
+        h += '<div class="entry-phrase">' + esc(p.phrase) + '</div>';
+        h += '<div class="entry-meaning">' + esc(p.meaning) + '</div>';
+        if (p.category) h += '<span class="badge ' + (CAT_CLASS[p.category] || 'badge-other') + '" style="font-size:.6875rem;margin-top:4px">' + p.category + '</span>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+  } else {
+    h += '<div class="muted tc" style="padding:12px 0 4px;font-size:.75rem">\u70b9\u51fb\u65e5\u671f\u67e5\u770b\u5f53\u5929\u8bb0\u5f55</div>';
+  }
+  
+  h += '</div>'; // close card
+  return h;
+}
+
+function changeMonth(delta) {
+  calendarMonth += delta;
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  nav(page);
+}
+
+function showDayEntries(dateStr) {
+  if (calendarSelectedDate === dateStr) {
+    calendarSelectedDate = ''; // toggle off
+  } else {
+    calendarSelectedDate = dateStr;
+  }
+  nav(page);
 }
 
 // ─── Vocab (生词本) ───
