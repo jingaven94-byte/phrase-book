@@ -57,7 +57,7 @@ function nav(p) {
 
 // ─── Modal ───
 function closeAllModals() {
-  document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.modal').forEach(function(m) { m.style.display = ''; m.classList.remove('open'); });
 }
 function openModal(title, editId) {
   closeAllModals();
@@ -83,7 +83,7 @@ function openModal(title, editId) {
   $('modal').classList.add('open');
   setTimeout(() => $('f-phrase').focus(), 300);
 }
-function closeModal() { $('modal').classList.remove('open'); }
+function closeModal() { var m = document.getElementById('modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
 
 function saveEntry(e) {
   e.preventDefault();
@@ -510,22 +510,27 @@ function vocabDeleteEntry(id, e) {
 
 function openVocabModal(editId) {
   closeAllModals();
-  $('vocab-modal-title').textContent = editId ? '编辑生词' : '添加生词';
-  $('vocab-edit-id').value = editId || '';
+  var m = $('vocab-modal');
+  if (!m) { alert('错误: 找不到生词弹窗元素'); return; }
+  var t = $('vocab-modal-title');
+  if (t) t.textContent = editId ? '编辑生词' : '添加生词';
+  var ei = $('vocab-edit-id');
+  if (ei) ei.value = editId || '';
   if (editId) {
-    const v = vocabData.find(x => x.id === editId);
+    var v = vocabData.find(function(x) { return x.id === editId; });
     if (!v) return;
-    $('vf-word').value = v.word;
-    $('vf-meaning').value = v.meaning;
+    var w = $('vf-word'); if (w) w.value = v.word;
+    var mn = $('vf-meaning'); if (mn) mn.value = v.meaning;
   } else {
-    $('vf-word').value = '';
-    $('vf-meaning').value = '';
+    var w = $('vf-word'); if (w) w.value = '';
+    var mn = $('vf-meaning'); if (mn) mn.value = '';
   }
-  $('vocab-modal').classList.add('open');
-  setTimeout(() => $('vf-word').focus(), 300);
+  m.style.display = 'block';
+  m.classList.add('open');
+  setTimeout(function() { var f = $('vf-word'); if (f) f.focus(); }, 300);
 }
 
-function closeVocabModal() { $('vocab-modal').classList.remove('open'); }
+function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
 
 function saveVocabEntry(e) {
   e.preventDefault();
@@ -617,9 +622,12 @@ function syncAll() {
   
   // First time: show setup modal
   if(!cfg || !cfg.token) {
-    $('modal-sync').classList.add('open');
+    var ms = document.getElementById('modal-sync');
+    if (!ms) { return; }
+    ms.style.display = 'block';
+    ms.classList.add('open');
     // Focus the token input
-    setTimeout(function() { var t = $('sync-token'); if(t) t.focus(); }, 300);
+    setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
     return;
   }
   
@@ -744,7 +752,11 @@ function closeSyncModal() {
 function openSyncSettings() {
   var cfg = getSyncConfig();
   if(cfg && cfg.token) $('sync-token').value = cfg.token;
-  $('modal-sync').classList.add('open');
+  var ms = document.getElementById('modal-sync');
+  if (ms) {
+    ms.style.display = 'block';
+    ms.classList.add('open');
+  }
   $('sync-status-msg').textContent = '';
   setTimeout(function() { var t = $('sync-token'); if(t) t.focus(); }, 300);
 }
