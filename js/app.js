@@ -509,26 +509,30 @@ function vocabDeleteEntry(id, e) {
 }
 
 function openVocabModal(editId) {
-  closeAllModals();
-  var m = document.getElementById('vocab-modal');
-  if (!m) return;
-  var t = document.getElementById('vocab-modal-title');
-  if (t) t.textContent = editId ? '编辑生词' : '添加生词';
-  var ei = document.getElementById('vocab-edit-id');
-  if (ei) ei.value = editId || '';
-  if (editId) {
-    var v = vocabData.find(function(x) { return x.id === editId; });
-    if (!v) return;
-    var w = document.getElementById('vf-word'); if (w) w.value = v.word;
-    var mn = document.getElementById('vf-meaning'); if (mn) mn.value = v.meaning;
-  } else {
-    var w = document.getElementById('vf-word'); if (w) w.value = '';
-    var mn = document.getElementById('vf-meaning'); if (mn) mn.value = '';
-  }
-  // Nuclear option: bypass all CSS
-  m.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
-  m.classList.add('open');
-  setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
+  // TEST: First make body red
+  document.body.style.background = '#ff0000';
+  // Wait 2 seconds, then show modal
+  setTimeout(function() {
+    closeAllModals();
+    var m = document.getElementById('vocab-modal');
+    if (!m) return;
+    var t = document.getElementById('vocab-modal-title');
+    if (t) t.textContent = editId ? '编辑生词' : '添加生词';
+    var ei = document.getElementById('vocab-edit-id');
+    if (ei) ei.value = editId || '';
+    if (editId) {
+      var v = vocabData.find(function(x) { return x.id === editId; });
+      if (!v) return;
+      var w = document.getElementById('vf-word'); if (w) w.value = v.word;
+      var mn = document.getElementById('vf-meaning'); if (mn) mn.value = v.meaning;
+    } else {
+      var w = document.getElementById('vf-word'); if (w) w.value = '';
+      var mn = document.getElementById('vf-meaning'); if (mn) mn.value = '';
+    }
+    m.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
+    m.classList.add('open');
+    setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
+  }, 2000);
 }
 
 function closeVocabModal() { var m = document.getElementById('vocab-modal'); if (m) { m.style.display = ''; m.classList.remove('open'); } }
@@ -618,20 +622,24 @@ function showSyncToast(msg, isOk) {
 
 // Main sync button handler: one-click sync all
 function syncAll() {
-  closeAllModals();
-  var cfg = getSyncConfig();
-  
-  // First time: show setup modal
-  if(!cfg || !cfg.token) {
-    var ms = document.getElementById('modal-sync');
-    if (!ms) return;
-    // Nuclear option: bypass all CSS
-    ms.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
-    ms.classList.add('open');
-    // Focus the token input
-    setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
-    return;
-  }
+  // TEST: First make body blue
+  document.body.style.background = '#0000ff';
+  setTimeout(function() {
+    closeAllModals();
+    var cfg = getSyncConfig();
+    
+    // First time: show setup modal
+    if(!cfg || !cfg.token) {
+      var ms = document.getElementById('modal-sync');
+      if (!ms) return;
+      ms.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
+      ms.classList.add('open');
+      setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
+      return;
+    }
+    // ... rest unchanged
+  }, 2000);
+}
   
   // Already configured: sync everything
   var token = cfg.token;
