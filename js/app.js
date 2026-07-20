@@ -525,6 +525,8 @@ function openVocabModal(editId) {
     var w = document.getElementById('vf-word'); if (w) w.value = '';
     var mn = document.getElementById('vf-meaning'); if (mn) mn.value = '';
   }
+  // Nuclear option: bypass all CSS
+  m.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
   m.classList.add('open');
   setTimeout(function() { var f = document.getElementById('vf-word'); if (f) f.focus(); }, 300);
 }
@@ -623,6 +625,8 @@ function syncAll() {
   if(!cfg || !cfg.token) {
     var ms = document.getElementById('modal-sync');
     if (!ms) return;
+    // Nuclear option: bypass all CSS
+    ms.setAttribute('style', 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important;');
     ms.classList.add('open');
     // Focus the token input
     setTimeout(function() { var t = document.getElementById('sync-token'); if(t) t.focus(); }, 300);
