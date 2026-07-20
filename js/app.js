@@ -17,6 +17,13 @@ const weekDays = ['日','一','二','三','四','五','六'];
 let data = [];
 let vocabData = [];
 let page = 'today';
+
+// ─── Vocab helpers (global) ───
+function vocabLoad() {
+  try { const raw = localStorage.getItem(VOCAB_KEY); if (raw) vocabData = JSON.parse(raw); } catch(e) {}
+  if (!Array.isArray(vocabData)) vocabData = [];
+}
+function vocabSave() { localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); }
 let bankFilter = 'all';
 let reviewMode = 'due';
 let reviewList = [], reviewIdx = 0, reviewRevealed = false;
@@ -29,6 +36,7 @@ function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
 
 // ─── Navigation ───
 function nav(p) {
+  closeAllModals();
   page = p;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === p));
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
@@ -779,13 +787,6 @@ function syncPull() {
 
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', () => {
-function vocabLoad() {
-  try { const raw = localStorage.getItem(VOCAB_KEY); if (raw) vocabData = JSON.parse(raw); } catch(e) {}
-  if (!Array.isArray(vocabData)) vocabData = [];
-}
-function vocabSave() { localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); }
-
-
   load();
   vocabLoad();
   nav('today');
