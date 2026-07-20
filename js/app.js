@@ -621,6 +621,23 @@ function saveSyncConfig(cfg) {
   localStorage.setItem('phrasebook_sync', JSON.stringify(cfg));
 }
 
+// Show a toast notification at the top
+function showSyncToast(msg, isOk) {
+  var el = $('sync-toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.background = isOk ? 'var(--success)' : 'var(--danger)';
+  el.style.color = '#fff';
+  el.style.opacity = '1';
+  el.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(el._hide);
+  el._hide = setTimeout(function() {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(-20px)';
+  }, 2500);
+}
+
+
 
 // Helper: upload data to repo, auto-fetch sha if needed
 function syncUploadToRepo(token, message) {
